@@ -1,7 +1,7 @@
-import { Client } from "square";
+// pages/api/inventory.js
+// We use require instead of import to prevent "Client is not a constructor" errors in Docker
+const { Client } = require("square");
 
-// FIX: Use strings "production" and "sandbox" directly instead of Environment.Production
-// This prevents the "Cannot read properties of undefined" error.
 const client = new Client({
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
   environment: process.env.SQUARE_ENVIRONMENT === 'production' 
@@ -28,37 +28,39 @@ export default async function handler(req, res) {
         inventoryCounts = inventoryResponse.result.counts || [];
     }
 
-    // 3. Merge Data
+    // 3. Merge Data (Simplified logic)
     const mergedData = catalogResponse.result.objects
       ?.filter(obj => obj.type === 'ITEM') // Get top level items
       .map(item => {
+        // Find variations (SKUs)
         const variations = item.itemData.variations;
         
         return variations.map(variation => {
             const price = Number(variation.itemVariationData.priceMoney?.amount || 0) / 100;
-            const cost = 0; // Placeholder: Real cost requires the Vendors API or custom attributes
+            // Note: Cost is often stored in custom fields or strictly in Inventory API depending on your square setup
+            const cost = 0; // You would fetch this from vendor management or custom attributes
             
             // Find inventory for this specific variation
             const stockData = inventoryCounts.find(c => c.catalogObjectId === variation.id);
             const stockCount = stockData ? Number(stockData.quantity) : 0;
             const lastSold = stockData?.state === 'SOLD' ? stockData.calculatedAt : null;
-
+            
             return {
                 id: variation.id,
                 name: `${item.itemData.name} - ${variation.itemVariationData.name}`,
                 price_money: price,
                 cost_money: cost,
-                sku: variation.itemVariationData.sku || 'No SKU',
+                sku: variation.itemVariationData.sku,
                 stock_count: stockCount,
                 last_sold_at: lastSold
+                // ... map other fields
             };
         });
       }).flat() || [];
 
     res.status(200).json(mergedData);
   } catch (error) {
-    console.error("Square API Error:", error);
-    // Return an empty list instead of crashing so the UI still loads
+    console.error(error);
     res.status(500).json({ error: "Failed to fetch Square data" });
   }
 }
