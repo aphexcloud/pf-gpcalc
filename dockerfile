@@ -1,7 +1,7 @@
-# Use Node 20 (Required for Next.js 15/16 stability)
+# Use Node 20 (Required for Next.js 16 stability)
 FROM node:20-alpine
 
-# Install compatibility library for Next.js compiler (SWC) on Alpine Linux
+# Install compatibility library for Next.js compiler
 RUN apk add --no-cache libc6-compat
 
 # Set working directory

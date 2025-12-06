@@ -1,6 +1,5 @@
 // pages/api/inventory.js
-// We use require instead of import to prevent "Client is not a constructor" errors in Docker
-const { Client } = require("square");
+import { Client } from "square";
 
 const client = new Client({
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
