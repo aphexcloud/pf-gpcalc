@@ -1,5 +1,6 @@
 // pages/api/inventory.js
-import { Client } from "square";
+// Use 'require' to prevent constructor errors in Docker environment
+const { Client } = require("square");
 
 const client = new Client({
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
