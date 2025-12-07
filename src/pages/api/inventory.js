@@ -1,12 +1,6 @@
-import { SquareClient, SquareEnvironment } from "square";
+// Square Inventory API with extended data
+// Fetches: catalog items, inventory counts, tax info, cost prices, and last sold dates
 
-// Initialize the client
-const client = new SquareClient({
-  accessToken: process.env.SQUARE_ACCESS_TOKEN,
-  environment: SquareEnvironment.Sandbox, // Change to SquareEnvironment.Production when ready
-});
-
-// Helper for BigInts
 const bigIntReplacer = (key, value) => {
   if (typeof value === "bigint") {
     return value.toString();
@@ -14,23 +8,21 @@ const bigIntReplacer = (key, value) => {
   return value;
 };
 
-// --- FALLBACK FUNCTION: RAW HTTP REQUEST ---
-// Used if the SDK methods are mismatched or fail
-async function rawSquareRequest(endpoint, method = "GET", body = null) {
-  const isProd = process.env.SQUARE_ENVIRONMENT === "production";
+async function rawSquareRequest(endpoint, token, isProd, method = "GET", body = null) {
   const baseUrl = isProd
     ? "https://connect.squareup.com"
     : "https://connect.squareupsandbox.com";
 
   const url = `${baseUrl}${endpoint}`;
-  
+
   const options = {
     method,
     headers: {
-      "Authorization": `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
+      "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
-      "Square-Version": "2023-10-20", // Pin a recent version
+      "Square-Version": "2024-01-18",
     },
+    cache: "no-store",
   };
 
   if (body) {
@@ -39,10 +31,102 @@ async function rawSquareRequest(endpoint, method = "GET", body = null) {
 
   const response = await fetch(url, options);
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Raw Request Failed: ${response.status} ${response.statusText} - ${errorText}`);
+    const txt = await response.text();
+    throw new Error(`Square API Failed: ${response.status} - ${txt}`);
   }
-  return await response.json();
+  return response.json();
+}
+
+// Fetch all catalog objects with pagination
+async function fetchAllCatalogObjects(token, isProd) {
+  let allObjects = [];
+  let cursor = null;
+
+  do {
+    const endpoint = cursor
+      ? `/v2/catalog/list?types=ITEM,TAX&cursor=${cursor}`
+      : `/v2/catalog/list?types=ITEM,TAX`;
+
+    const data = await rawSquareRequest(endpoint, token, isProd);
+    if (data.objects) {
+      allObjects = [...allObjects, ...data.objects];
+    }
+    cursor = data.cursor;
+  } while (cursor);
+
+  return allObjects;
+}
+
+// Get inventory counts for variations
+async function getInventoryCounts(variationIds, token, isProd) {
+  const countsMap = {};
+
+  for (let i = 0; i < variationIds.length; i += 100) {
+    const batchIds = variationIds.slice(i, i + 100);
+
+    try {
+      const data = await rawSquareRequest(
+        "/v2/inventory/batch-retrieve-counts",
+        token,
+        isProd,
+        "POST",
+        { catalog_object_ids: batchIds }
+      );
+
+      if (data.counts) {
+        for (const count of data.counts) {
+          const objId = count.catalog_object_id;
+          if (objId) {
+            countsMap[objId] = Number(count.quantity) || 0;
+          }
+        }
+      }
+    } catch (err) {
+      console.log("Could not fetch inventory counts:", err.message);
+    }
+  }
+
+  return countsMap;
+}
+
+// Get last sold dates from inventory changes
+async function getLastSoldDates(variationIds, token, isProd) {
+  const lastSoldMap = {};
+
+  for (let i = 0; i < variationIds.length; i += 100) {
+    const batchIds = variationIds.slice(i, i + 100);
+
+    try {
+      const data = await rawSquareRequest(
+        "/v2/inventory/changes/batch-retrieve",
+        token,
+        isProd,
+        "POST",
+        {
+          catalog_object_ids: batchIds,
+          types: ["ADJUSTMENT"],
+          states: ["SOLD"]
+        }
+      );
+
+      if (data.changes) {
+        for (const change of data.changes) {
+          const objId = change.adjustment?.catalog_object_id;
+          const occurredAt = change.adjustment?.occurred_at;
+
+          if (objId && occurredAt) {
+            if (!lastSoldMap[objId] || new Date(occurredAt) > new Date(lastSoldMap[objId])) {
+              lastSoldMap[objId] = occurredAt;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.log("Could not fetch inventory changes:", err.message);
+    }
+  }
+
+  return lastSoldMap;
 }
 
 export default async function handler(req, res) {
@@ -50,146 +134,115 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const rawToken = process.env.SQUARE_ACCESS_TOKEN || "";
+  const envToken = rawToken.trim().replace(/^["']|["']$/g, '');
+
+  const rawEnv = process.env.SQUARE_ENVIRONMENT || "sandbox";
+  const isProduction = rawEnv.toLowerCase().includes("production");
+
+  if (!envToken) {
+    return res.status(500).json({ error: "Missing SQUARE_ACCESS_TOKEN" });
+  }
+
   try {
-    console.log("Fetching Square Catalog and Inventory...");
+    console.log(`Fetching Square Catalog (Mode: ${isProduction ? 'Production' : 'Sandbox'})...`);
 
-    // ---------------------------------------------------------
-    // ATTEMPT 1: SDK (With Debugging)
-    // ---------------------------------------------------------
-    let items = [];
-    let inventoryCounts = [];
+    // 1. Fetch all catalog objects (items and taxes)
+    const allObjects = await fetchAllCatalogObjects(envToken, isProduction);
 
-    try {
-      // 1. Determine Accessors
-      const catalogApi = client.catalogApi || client.catalog;
-      const inventoryApi = client.inventoryApi || client.inventory;
+    const items = allObjects.filter(obj => obj.type === 'ITEM');
+    const taxes = allObjects.filter(obj => obj.type === 'TAX');
 
-      // DEBUG: Log the actual methods available to solve the mystery
-      if (catalogApi) {
-        console.log("DEBUG: CatalogAPI Methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(catalogApi)));
-      }
+    console.log(`Found ${items.length} items and ${taxes.length} taxes`);
 
-      // 2. Try Fetching Catalog
-      // We try standard name 'listCatalog', then 'list'
-      let catalogResponse;
-      if (catalogApi && typeof catalogApi.listCatalog === 'function') {
-        catalogResponse = await catalogApi.listCatalog(undefined, "ITEM,ITEM_VARIATION");
-      } else if (catalogApi && typeof catalogApi.list === 'function') {
-         // Some versions shorten the name
-        catalogResponse = await catalogApi.list(undefined, "ITEM,ITEM_VARIATION");
-      } else {
-        throw new Error("Could not find listCatalog or list method on catalogApi");
-      }
-
-      items = catalogResponse.result.objects || [];
-
-      // 3. Try Fetching Inventory
-      const variationIds = items
-        .flatMap(item => item.itemData?.variations || [])
-        .map(variation => variation.id);
-
-      if (variationIds.length > 0) {
-        const batchSize = 100;
-        for (let i = 0; i < variationIds.length; i += batchSize) {
-          const batchIds = variationIds.slice(i, i + batchSize);
-          
-          let invResponse;
-          if (typeof inventoryApi.batchRetrieveInventoryCounts === 'function') {
-            invResponse = await inventoryApi.batchRetrieveInventoryCounts({ catalogObjectIds: batchIds });
-          } else if (typeof inventoryApi.batchRetrieveCounts === 'function') {
-             invResponse = await inventoryApi.batchRetrieveCounts({ catalogObjectIds: batchIds });
-          }
-          
-          if (invResponse && invResponse.result.counts) {
-            inventoryCounts = [...inventoryCounts, ...invResponse.result.counts];
-          }
-        }
-      }
-
-    } catch (sdkError) {
-      console.warn("SDK Method failed (" + sdkError.message + "). Switching to Raw HTTP Fallback.");
-      
-      // ---------------------------------------------------------
-      // ATTEMPT 2: RAW FETCH FALLBACK (Guaranteed to work if key is valid)
-      // ---------------------------------------------------------
-      
-      // 1. Fetch Catalog
-      const catData = await rawSquareRequest("/v2/catalog/list?types=ITEM,ITEM_VARIATION");
-      items = catData.objects || [];
-
-      // 2. Fetch Inventory
-      const variationIds = items
-        .flatMap(item => item.itemData?.variations || [])
-        .map(variation => variation.id);
-
-      if (variationIds.length > 0) {
-         // Batching logic for raw fetch
-         const batchSize = 100;
-         for (let i = 0; i < variationIds.length; i += batchSize) {
-           const batchIds = variationIds.slice(i, i + batchSize);
-           const invData = await rawSquareRequest("/v2/inventory/batch-retrieve-counts", "POST", {
-             catalog_object_ids: batchIds
-           });
-           if (invData.counts) {
-             inventoryCounts = [...inventoryCounts, ...invData.counts];
-           }
-         }
-      }
-    }
-
-    // ---------------------------------------------------------
-    // PROCESS DATA (Common to both methods)
-    // ---------------------------------------------------------
-    
-    if (items.length === 0) {
-      return res.status(200).json([]);
-    }
-
-    const mappedData = items.map((item) => {
-      // Safety check: itemData might be undefined in some edge cases
-      if (!item.itemData || !item.itemData.variations) return null;
-
-      const variations = item.itemData.variations.map((variation) => {
-        // Find matching inventory count
-        const countData = inventoryCounts.find(
-          (c) => c.catalogObjectId === variation.id || c.catalog_object_id === variation.id
-        );
-
-        // Handle price (Raw API uses snake_case, SDK might use camelCase)
-        const priceData = variation.itemVariationData.priceMoney || variation.itemVariationData.price_money;
-        const price = priceData ? Number(priceData.amount) / 100 : 0;
-        const currency = priceData ? priceData.currency : "USD";
-
-        return {
-          id: variation.id,
-          name: variation.itemVariationData.name,
-          sku: variation.itemVariationData.sku || "N/A",
-          price: price,
-          currency: currency,
-          quantity: countData ? countData.quantity : "0",
-          status: countData ? countData.state : "UNKNOWN",
-        };
-      }).filter(Boolean); // Remove nulls
-
-      return {
-        id: item.id,
-        name: item.itemData.name,
-        description: item.itemData.description || "",
-        category_id: item.itemData.categoryId || item.itemData.category_id,
-        variations: variations,
+    // Create tax lookup map (using snake_case from API response)
+    const taxMap = {};
+    for (const tax of taxes) {
+      taxMap[tax.id] = {
+        name: tax.tax_data?.name || 'Unknown Tax',
+        percentage: tax.tax_data?.percentage || '0',
+        enabled: tax.tax_data?.enabled !== false
       };
-    }).filter(Boolean);
+    }
 
-    // Return Data
-    const jsonString = JSON.stringify(mappedData, bigIntReplacer);
+    // 2. Get all variation IDs
+    const variationIds = items
+      .filter(item => item.item_data?.variations)
+      .flatMap(item => item.item_data.variations.map(v => v.id));
+
+    console.log(`Found ${variationIds.length} variations`);
+
+    // 3. Fetch inventory counts
+    const inventoryCounts = await getInventoryCounts(variationIds, envToken, isProduction);
+
+    // 4. Fetch last sold dates
+    const lastSoldMap = await getLastSoldDates(variationIds, envToken, isProduction);
+
+    // 5. Merge all data
+    const mergedData = items
+      .filter(item => !item.item_data?.is_archived) // Filter out archived items
+      .map(item => {
+        if (!item.item_data || !item.item_data.variations) return [];
+
+        // Get tax info for this item (using snake_case)
+        const itemTaxIds = item.item_data.tax_ids || [];
+        const hasTax = itemTaxIds.length > 0;
+        const taxInfo = itemTaxIds.map(id => taxMap[id]).filter(Boolean);
+        const gstEnabled = hasTax && taxInfo.some(t => t.enabled);
+
+        return item.item_data.variations.map(variation => {
+          const varData = variation.item_variation_data || {};
+
+          // Get sell price
+          let sellPrice = 0;
+          if (varData.price_money?.amount) {
+            sellPrice = Number(varData.price_money.amount) / 100;
+          }
+
+          // Get cost price from default_unit_cost or vendor info
+          let costPrice = null;
+          if (varData.default_unit_cost?.amount) {
+            costPrice = Number(varData.default_unit_cost.amount) / 100;
+          } else if (varData.item_variation_vendor_infos?.length > 0) {
+            // Use the first vendor's price if no default cost
+            const vendorInfo = varData.item_variation_vendor_infos[0];
+            if (vendorInfo.item_variation_vendor_info_data?.price_money?.amount) {
+              costPrice = Number(vendorInfo.item_variation_vendor_info_data.price_money.amount) / 100;
+            }
+          }
+
+          const stockCount = inventoryCounts[variation.id] || 0;
+          const lastSoldAt = lastSoldMap[variation.id] || null;
+
+          // Variation name - use empty string as "Regular"
+          const variationName = varData.name || 'Regular';
+
+          return {
+            id: variation.id,
+            itemId: item.id,
+            name: item.item_data.name,
+            variationName: variationName === '' ? 'Regular' : variationName,
+            fullName: `${item.item_data.name}${variationName && variationName !== 'Regular' ? ' - ' + variationName : ''}`,
+            price: sellPrice,
+            costPrice: costPrice,
+            sku: varData.sku || "",
+            stockCount: stockCount,
+            lastSoldAt: lastSoldAt,
+            gstEnabled: gstEnabled,
+            taxInfo: taxInfo,
+            trackInventory: varData.track_inventory || false,
+          };
+        });
+      }).flat();
+
+    console.log(`Returning ${mergedData.length} items`);
+
+    const jsonString = JSON.stringify(mergedData, bigIntReplacer);
     res.setHeader("Content-Type", "application/json");
     res.status(200).send(jsonString);
 
   } catch (error) {
-    console.error("API Handler Fatal Error:", error);
-    res.status(500).json({
-      error: "Failed to fetch inventory",
-      details: error.message
-    });
+    console.error("API Error:", error);
+    res.status(500).json({ error: error.message });
   }
 }
