@@ -33,24 +33,21 @@ export default function InventoryPage() {
   const [tempCost, setTempCost] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
-  // Load cost prices from localStorage
+  // Load cost overrides from server
   useEffect(() => {
-    const saved = localStorage.getItem('squareCostPrices');
-    if (saved) {
+    async function loadCostOverrides() {
       try {
-        setCostPrices(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse saved cost prices');
+        const res = await fetch('/api/cost-overrides');
+        if (res.ok) {
+          const data = await res.json();
+          setCostPrices(data);
+        }
+      } catch (err) {
+        console.error('Failed to load cost overrides:', err);
       }
     }
+    loadCostOverrides();
   }, []);
-
-  // Save cost prices to localStorage
-  useEffect(() => {
-    if (Object.keys(costPrices).length > 0) {
-      localStorage.setItem('squareCostPrices', JSON.stringify(costPrices));
-    }
-  }, [costPrices]);
 
   // Fetch inventory data
   useEffect(() => {
@@ -82,10 +79,22 @@ export default function InventoryPage() {
     setTempCost(currentCost?.toString() || '');
   };
 
-  const handleCostSave = (id) => {
+  const handleCostSave = async (id) => {
     const cost = parseFloat(tempCost);
     if (!isNaN(cost) && cost >= 0) {
-      setCostPrices(prev => ({ ...prev, [id]: cost }));
+      // Save to server
+      try {
+        const res = await fetch('/api/cost-overrides', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, cost })
+        });
+        if (res.ok) {
+          setCostPrices(prev => ({ ...prev, [id]: cost }));
+        }
+      } catch (err) {
+        console.error('Failed to save cost override:', err);
+      }
     }
     setEditingId(null);
     setTempCost('');
@@ -473,9 +482,9 @@ export default function InventoryPage() {
 
         {/* Info Footer */}
         <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Cost prices are loaded from Square. Click to manually override (saved locally).</p>
+          <p>Cost prices are loaded from Square. Click to manually override (saved on server).</p>
           <p className="mt-1 text-xs text-gray-400">
-            <span className="text-blue-500">*</span> = manual override | Regular text = from Square
+            <span className="text-blue-500">*</span> = manual override | Regular text = from Square | Read-only (never edits Square)
           </p>
         </div>
       </main>
