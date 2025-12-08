@@ -23,6 +23,13 @@ function calculateProfit(sellPrice, costPrice) {
   return { gpPercent, margin };
 }
 
+// Default GP thresholds
+const DEFAULT_THRESHOLDS = {
+  excellent: 50,
+  good: 30,
+  low: 0
+};
+
 export default function ProfitDashboard() {
   const [inventory, setInventory] = useState([]);
   const [merchant, setMerchant] = useState(null);
@@ -33,6 +40,30 @@ export default function ProfitDashboard() {
   const [editingId, setEditingId] = useState(null);
   const [tempCost, setTempCost] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+
+  // Settings
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [gpThresholds, setGpThresholds] = useState(DEFAULT_THRESHOLDS);
+  const [tempThresholds, setTempThresholds] = useState(DEFAULT_THRESHOLDS);
+
+  // Load settings from server
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.gpThresholds) {
+            setGpThresholds(data.gpThresholds);
+            setTempThresholds(data.gpThresholds);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      }
+    }
+    loadSettings();
+  }, []);
 
   // Load cost overrides from server
   useEffect(() => {
@@ -81,6 +112,23 @@ export default function ProfitDashboard() {
     fetchData();
   }, []);
 
+  // Save settings
+  const saveSettings = async () => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gpThresholds: tempThresholds })
+      });
+      if (res.ok) {
+        setGpThresholds(tempThresholds);
+        setSettingsOpen(false);
+      }
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    }
+  };
+
   // Handle cost price edit
   const handleCostEdit = (id, currentCost) => {
     setEditingId(id);
@@ -122,6 +170,14 @@ export default function ProfitDashboard() {
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
+  };
+
+  // Get GP color class based on thresholds
+  const getGpColorClass = (gpPercent) => {
+    if (gpPercent >= gpThresholds.excellent) return 'gp-excellent';
+    if (gpPercent >= gpThresholds.good) return 'gp-good';
+    if (gpPercent >= gpThresholds.low) return 'gp-low';
+    return 'gp-negative';
   };
 
   // Filter and sort inventory
@@ -233,17 +289,138 @@ export default function ProfitDashboard() {
   // Main Content
   return (
     <div className="min-h-screen bg-white">
+      {/* Settings Sidebar */}
+      {settingsOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/20 z-40"
+            onClick={() => setSettingsOpen(false)}
+          />
+
+          {/* Sidebar */}
+          <div className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
+                <button
+                  onClick={() => setSettingsOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* GP Thresholds */}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-4">GP% Color Thresholds</h3>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                        <span className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-green-600"></span>
+                          Green (Excellent)
+                        </span>
+                        <span className="font-mono">≥ {tempThresholds.excellent}%</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={tempThresholds.excellent}
+                        onChange={(e) => setTempThresholds(prev => ({ ...prev, excellent: parseInt(e.target.value) }))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                        <span className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+                          Yellow (Good)
+                        </span>
+                        <span className="font-mono">≥ {tempThresholds.good}%</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={tempThresholds.good}
+                        onChange={(e) => setTempThresholds(prev => ({ ...prev, good: parseInt(e.target.value) }))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                        <span className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                          Orange (Low)
+                        </span>
+                        <span className="font-mono">≥ {tempThresholds.low}%</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="-50"
+                        max="100"
+                        value={tempThresholds.low}
+                        onChange={(e) => setTempThresholds(prev => ({ ...prev, low: parseInt(e.target.value) }))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                      />
+                    </div>
+
+                    <div className="pt-2">
+                      <p className="text-xs text-gray-500 flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-red-600"></span>
+                        Red shown for values below {tempThresholds.low}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <button
+                    onClick={saveSettings}
+                    className="w-full apple-button"
+                  >
+                    Save Settings
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Header */}
-      <header className="apple-header sticky top-0 z-50">
+      <header className="apple-header sticky top-0 z-30">
         <div className="max-w-[1400px] mx-auto px-6 py-6">
-          {/* Centered Title & Business Name */}
-          <div className="text-center mb-6">
-            <h1 className="app-title text-3xl lg:text-4xl text-gray-900 mb-2">
-              Profit Dashboard
-            </h1>
-            {merchant?.name && (
-              <p className="business-name text-lg lg:text-xl">{merchant.name}</p>
-            )}
+          {/* Menu Button & Centered Title */}
+          <div className="relative mb-6">
+            {/* Hamburger Menu - Left */}
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Settings"
+            >
+              <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Centered Title & Business Name */}
+            <div className="text-center">
+              <h1 className="app-title text-3xl lg:text-4xl text-gray-900 mb-2">
+                Profit Dashboard
+              </h1>
+              {merchant?.name && (
+                <p className="business-name text-lg lg:text-xl">{merchant.name}</p>
+              )}
+            </div>
           </div>
 
           {/* Search & Stats Row */}
@@ -355,6 +532,8 @@ export default function ProfitDashboard() {
                   {filteredInventory.map((item) => {
                     const cost = costPrices[item.id] ?? item.costPrice;
                     const { gpPercent, margin } = calculateProfit(item.price, cost);
+                    // Check both isTaxable (new) and gstEnabled (legacy) for backwards compatibility
+                    const showGst = item.isTaxable ?? item.gstEnabled ?? false;
 
                     return (
                       <tr key={item.id}>
@@ -414,11 +593,7 @@ export default function ProfitDashboard() {
                         {/* GP% */}
                         <td className="text-right">
                           {gpPercent !== null ? (
-                            <span className={`font-semibold ${
-                              gpPercent >= 50 ? 'gp-excellent' :
-                              gpPercent >= 30 ? 'gp-good' :
-                              gpPercent >= 0 ? 'gp-low' : 'gp-negative'
-                            }`}>
+                            <span className={`font-semibold ${getGpColorClass(gpPercent)}`}>
                               {gpPercent.toFixed(1)}%
                             </span>
                           ) : (
@@ -426,10 +601,10 @@ export default function ProfitDashboard() {
                           )}
                         </td>
 
-                        {/* Margin */}
+                        {/* Margin - no color */}
                         <td className="text-right">
                           {margin !== null ? (
-                            <span className={margin >= 0 ? 'text-green-700' : 'text-red-600'}>
+                            <span className="text-gray-700">
                               ${margin.toFixed(2)}
                             </span>
                           ) : (
@@ -439,8 +614,8 @@ export default function ProfitDashboard() {
 
                         {/* GST */}
                         <td className="text-center">
-                          <span className={`badge ${item.gstEnabled ? 'badge-green' : 'badge-gray'}`}>
-                            {item.gstEnabled ? 'GST' : 'No GST'}
+                          <span className={`badge ${showGst ? 'badge-green' : 'badge-gray'}`}>
+                            {showGst ? 'GST' : 'No GST'}
                           </span>
                         </td>
 

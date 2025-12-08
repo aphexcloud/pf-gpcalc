@@ -203,10 +203,10 @@ export default async function handler(req, res) {
         if (!item.item_data || !item.item_data.variations) return [];
 
         // Get tax info for this item (using snake_case)
+        // is_taxable is the primary indicator of whether GST is charged
+        const isTaxable = item.item_data.is_taxable === true;
         const itemTaxIds = item.item_data.tax_ids || [];
-        const hasTax = itemTaxIds.length > 0;
         const taxInfo = itemTaxIds.map(id => taxMap[id]).filter(Boolean);
-        const gstEnabled = hasTax && taxInfo.some(t => t.enabled);
 
         return item.item_data.variations.map(variation => {
           const varData = variation.item_variation_data || {};
@@ -246,7 +246,7 @@ export default async function handler(req, res) {
             sku: varData.sku || "",
             stockCount: stockCount,
             lastSoldAt: lastSoldAt,
-            gstEnabled: gstEnabled,
+            isTaxable: isTaxable,
             taxInfo: taxInfo,
             trackInventory: varData.track_inventory || false,
           };
