@@ -129,6 +129,21 @@ async function getLastSoldDates(variationIds, token, isProd) {
   return lastSoldMap;
 }
 
+// Get merchant info
+async function getMerchantInfo(token, isProd) {
+  try {
+    const data = await rawSquareRequest("/v2/merchants/me", token, isProd);
+    return {
+      name: data.merchant?.business_name || 'Unknown Business',
+      id: data.merchant?.id || '',
+      country: data.merchant?.country || ''
+    };
+  } catch (err) {
+    console.error("Could not fetch merchant info:", err.message);
+    return { name: 'Unknown Business', id: '', country: '' };
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -146,6 +161,9 @@ export default async function handler(req, res) {
 
   try {
     console.log(`Fetching Square Catalog (Mode: ${isProduction ? 'Production' : 'Sandbox'})...`);
+
+    // 0. Fetch merchant info
+    const merchant = await getMerchantInfo(envToken, isProduction);
 
     // 1. Fetch all catalog objects (items and taxes)
     const allObjects = await fetchAllCatalogObjects(envToken, isProduction);
@@ -237,7 +255,12 @@ export default async function handler(req, res) {
 
     console.log(`Returning ${mergedData.length} items`);
 
-    const jsonString = JSON.stringify(mergedData, bigIntReplacer);
+    const response = {
+      merchant: merchant,
+      items: mergedData
+    };
+
+    const jsonString = JSON.stringify(response, bigIntReplacer);
     res.setHeader("Content-Type", "application/json");
     res.status(200).send(jsonString);
 

@@ -7,7 +7,7 @@ function formatDate(dateString) {
   if (!dateString) return '—';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-AU', {
-    day: '2-digit',
+    day: 'numeric',
     month: 'short',
     year: 'numeric'
   });
@@ -23,8 +23,9 @@ function calculateProfit(sellPrice, costPrice) {
   return { gpPercent, margin };
 }
 
-export default function InventoryPage() {
+export default function ProfitDashboard() {
   const [inventory, setInventory] = useState([]);
+  const [merchant, setMerchant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,7 +59,14 @@ export default function InventoryPage() {
           throw new Error(`Server returned ${res.status} ${res.statusText}`);
         }
         const data = await res.json();
-        if (Array.isArray(data)) {
+
+        if (data.merchant) {
+          setMerchant(data.merchant);
+        }
+
+        if (Array.isArray(data.items)) {
+          setInventory(data.items);
+        } else if (Array.isArray(data)) {
           setInventory(data);
         } else {
           setInventory([]);
@@ -82,7 +90,6 @@ export default function InventoryPage() {
   const handleCostSave = async (id) => {
     const cost = parseFloat(tempCost);
     if (!isNaN(cost) && cost >= 0) {
-      // Save to server
       try {
         const res = await fetch('/api/cost-overrides', {
           method: 'POST',
@@ -121,7 +128,6 @@ export default function InventoryPage() {
   const filteredInventory = useMemo(() => {
     let filtered = inventory;
 
-    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(item =>
@@ -131,7 +137,6 @@ export default function InventoryPage() {
       );
     }
 
-    // Sort
     filtered = [...filtered].sort((a, b) => {
       let aVal, bVal;
 
@@ -178,12 +183,12 @@ export default function InventoryPage() {
   }, [inventory, searchQuery, sortConfig, costPrices]);
 
   // Sort indicator
-  const SortIcon = ({ columnKey }) => {
+  const SortIndicator = ({ columnKey }) => {
     if (sortConfig.key !== columnKey) {
-      return <span className="text-gray-300 ml-1">↕</span>;
+      return <span className="ml-1 opacity-30">↕</span>;
     }
     return (
-      <span className="text-blue-500 ml-1">
+      <span className="ml-1 opacity-70">
         {sortConfig.direction === 'asc' ? '↑' : '↓'}
       </span>
     );
@@ -192,11 +197,11 @@ export default function InventoryPage() {
   // Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-blue-50 flex items-center justify-center">
-        <div className="glass-card p-8 text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <h1 className="text-xl font-semibold text-gray-800">Loading Inventory...</h1>
-          <p className="text-gray-500 mt-2">Connecting to Square</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="spinner mx-auto mb-6"></div>
+          <h1 className="app-title text-2xl mb-2">Profit Dashboard</h1>
+          <p className="business-name text-sm">Connecting to Square...</p>
         </div>
       </div>
     );
@@ -205,18 +210,18 @@ export default function InventoryPage() {
   // Error State
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-red-50 flex items-center justify-center p-4">
-        <div className="glass-card p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="apple-card p-10 max-w-md w-full text-center">
+          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5">
+            <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-gray-800 mb-2">Error Loading Data</h1>
-          <p className="text-gray-600 mb-6 font-mono text-sm bg-gray-100 p-3 rounded-lg">{error}</p>
+          <h1 className="app-title text-xl mb-3">Unable to Load</h1>
+          <p className="text-sm text-gray-500 mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+            className="apple-button"
           >
             Try Again
           </button>
@@ -227,39 +232,44 @@ export default function InventoryPage() {
 
   // Main Content
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-blue-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="glass-header sticky top-0 z-50">
-        <div className="max-w-[1800px] mx-auto px-4 py-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">GP Calculator</h1>
-              <p className="text-gray-500 text-sm">Square Inventory Profit Analysis</p>
+      <header className="apple-header sticky top-0 z-50">
+        <div className="max-w-[1400px] mx-auto px-6 py-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            {/* Title & Business Name */}
+            <div className="text-center lg:text-left">
+              <h1 className="app-title text-2xl lg:text-3xl text-gray-900">
+                Profit Dashboard
+              </h1>
+              {merchant?.name && (
+                <p className="business-name text-sm mt-1">{merchant.name}</p>
+              )}
             </div>
 
-            {/* Search Bar */}
-            <div className="relative flex-1 max-w-md">
-              <input
-                type="text"
-                placeholder="Search products by name or SKU..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
+            {/* Search */}
+            <div className="relative flex-1 max-w-md mx-auto lg:mx-0">
               <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="apple-search"
+              />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -267,16 +277,14 @@ export default function InventoryPage() {
             </div>
 
             {/* Stats */}
-            <div className="flex gap-3">
-              <div className="glass-stat">
-                <span className="text-gray-500 text-xs uppercase tracking-wider">Products</span>
-                <span className="text-lg font-bold text-gray-800">{filteredInventory.length}</span>
+            <div className="flex justify-center gap-3">
+              <div className="stat-pill">
+                <span className="text-gray-500">{filteredInventory.length}</span>
+                <span>Products</span>
               </div>
-              <div className="glass-stat">
-                <span className="text-gray-500 text-xs uppercase tracking-wider">With Cost</span>
-                <span className="text-lg font-bold text-green-600">
-                  {filteredInventory.filter(i => costPrices[i.id] ?? i.costPrice).length}
-                </span>
+              <div className="stat-pill">
+                <span className="text-green-600">{filteredInventory.filter(i => costPrices[i.id] ?? i.costPrice).length}</span>
+                <span>With Cost</span>
               </div>
             </div>
           </div>
@@ -284,102 +292,93 @@ export default function InventoryPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1800px] mx-auto px-4 py-6">
+      <main className="max-w-[1400px] mx-auto px-6 py-8">
         {filteredInventory.length === 0 ? (
-          <div className="glass-card p-12 text-center">
-            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          <div className="apple-card p-16 text-center">
+            <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
-            <h2 className="text-xl font-semibold text-gray-700">No Products Found</h2>
-            <p className="text-gray-500 mt-2">
-              {searchQuery ? 'Try adjusting your search terms' : 'No items in your Square catalog'}
+            <h2 className="text-lg font-medium text-gray-700 mb-1">No Products Found</h2>
+            <p className="text-sm text-gray-500">
+              {searchQuery ? 'Try adjusting your search' : 'No items in catalog'}
             </p>
           </div>
         ) : (
-          <div className="glass-card overflow-hidden">
+          <div className="apple-card overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="apple-table">
                 <thead>
-                  <tr className="bg-gray-50/80 border-b border-gray-200">
+                  <tr>
                     <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 transition-colors"
+                      className="cursor-pointer hover:text-gray-700 transition-colors"
                       onClick={() => handleSort('name')}
                     >
-                      Product <SortIcon columnKey="name" />
+                      Product <SortIndicator columnKey="name" />
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      SKU
-                    </th>
+                    <th>SKU</th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 transition-colors"
+                      className="text-right cursor-pointer hover:text-gray-700 transition-colors"
                       onClick={() => handleSort('price')}
                     >
-                      Sell Price <SortIcon columnKey="price" />
+                      Sell <SortIndicator columnKey="price" />
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 transition-colors"
+                      className="text-right cursor-pointer hover:text-gray-700 transition-colors"
                       onClick={() => handleSort('cost')}
                     >
-                      Cost Price <SortIcon columnKey="cost" />
+                      Cost <SortIndicator columnKey="cost" />
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 transition-colors"
+                      className="text-right cursor-pointer hover:text-gray-700 transition-colors"
                       onClick={() => handleSort('gp')}
                     >
-                      GP% <SortIcon columnKey="gp" />
+                      GP% <SortIndicator columnKey="gp" />
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Margin $
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      GST
-                    </th>
+                    <th className="text-right">Margin</th>
+                    <th className="text-center">GST</th>
                     <th
-                      className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 transition-colors"
+                      className="text-center cursor-pointer hover:text-gray-700 transition-colors"
                       onClick={() => handleSort('lastSold')}
                     >
-                      Last Sold <SortIcon columnKey="lastSold" />
+                      Last Sold <SortIndicator columnKey="lastSold" />
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 transition-colors"
+                      className="text-right cursor-pointer hover:text-gray-700 transition-colors"
                       onClick={() => handleSort('stock')}
                     >
-                      Stock <SortIcon columnKey="stock" />
+                      Stock <SortIndicator columnKey="stock" />
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   {filteredInventory.map((item) => {
-                    // Use manual override if set, otherwise use Square's cost price
                     const cost = costPrices[item.id] ?? item.costPrice;
                     const { gpPercent, margin } = calculateProfit(item.price, cost);
 
                     return (
-                      <tr key={item.id} className="hover:bg-blue-50/30 transition-colors">
-                        {/* Product Name */}
-                        <td className="px-4 py-3">
+                      <tr key={item.id}>
+                        {/* Product */}
+                        <td>
                           <div className="font-medium text-gray-900">{item.name}</div>
                           {item.variationName !== 'Regular' && (
-                            <div className="text-sm text-gray-500">{item.variationName}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{item.variationName}</div>
                           )}
                         </td>
 
                         {/* SKU */}
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-sm text-gray-500">
+                        <td>
+                          <span className="text-xs text-gray-500 font-mono">
                             {item.sku || '—'}
                           </span>
                         </td>
 
                         {/* Sell Price */}
-                        <td className="px-4 py-3 text-right">
-                          <span className="font-semibold text-gray-900">
-                            ${item.price?.toFixed(2) || '0.00'}
-                          </span>
+                        <td className="text-right font-medium">
+                          ${item.price?.toFixed(2) || '0.00'}
                         </td>
 
-                        {/* Cost Price (from Square or editable override) */}
-                        <td className="px-4 py-3 text-right">
+                        {/* Cost Price */}
+                        <td className="text-right">
                           {editingId === item.id ? (
                             <input
                               type="number"
@@ -389,38 +388,36 @@ export default function InventoryPage() {
                               onChange={(e) => setTempCost(e.target.value)}
                               onBlur={() => handleCostSave(item.id)}
                               onKeyDown={(e) => handleCostKeyDown(e, item.id)}
-                              className="w-24 px-2 py-1 text-right border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-20 px-2 py-1 text-right text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                               autoFocus
                             />
                           ) : (
                             <button
                               onClick={() => handleCostEdit(item.id, cost)}
-                              className="group inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
-                              title={costPrices[item.id] ? "Manual override (click to edit)" : item.costPrice ? "From Square (click to override)" : "Click to set cost"}
+                              className="group inline-flex items-center gap-1 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
                             >
                               {cost ? (
-                                <>
-                                  <span className={`font-medium ${costPrices[item.id] ? 'text-blue-600' : 'text-gray-700'}`}>
-                                    ${cost.toFixed(2)}
-                                  </span>
-                                  {costPrices[item.id] && (
-                                    <span className="text-xs text-blue-400" title="Manual override">*</span>
-                                  )}
-                                </>
+                                <span className={costPrices[item.id] ? 'text-blue-600' : 'text-gray-700'}>
+                                  ${cost.toFixed(2)}
+                                </span>
                               ) : (
-                                <span className="text-gray-400 italic">Set cost</span>
+                                <span className="text-gray-400 text-sm">Set</span>
                               )}
-                              <svg className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                              </svg>
+                              {costPrices[item.id] && (
+                                <span className="text-blue-400 text-xs">*</span>
+                              )}
                             </button>
                           )}
                         </td>
 
                         {/* GP% */}
-                        <td className="px-4 py-3 text-right">
+                        <td className="text-right">
                           {gpPercent !== null ? (
-                            <span className={`font-bold ${gpPercent >= 50 ? 'text-green-600' : gpPercent >= 30 ? 'text-yellow-600' : gpPercent >= 0 ? 'text-orange-600' : 'text-red-600'}`}>
+                            <span className={`font-semibold ${
+                              gpPercent >= 50 ? 'gp-excellent' :
+                              gpPercent >= 30 ? 'gp-good' :
+                              gpPercent >= 0 ? 'gp-low' : 'gp-negative'
+                            }`}>
                               {gpPercent.toFixed(1)}%
                             </span>
                           ) : (
@@ -428,10 +425,10 @@ export default function InventoryPage() {
                           )}
                         </td>
 
-                        {/* Margin $ */}
-                        <td className="px-4 py-3 text-right">
+                        {/* Margin */}
+                        <td className="text-right">
                           {margin !== null ? (
-                            <span className={`font-medium ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <span className={margin >= 0 ? 'text-green-700' : 'text-red-600'}>
                               ${margin.toFixed(2)}
                             </span>
                           ) : (
@@ -439,34 +436,23 @@ export default function InventoryPage() {
                           )}
                         </td>
 
-                        {/* GST Status */}
-                        <td className="px-4 py-3 text-center">
-                          {item.gstEnabled ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                              GST
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                              No GST
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Last Sold */}
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-sm text-gray-600">
-                            {formatDate(item.lastSoldAt)}
+                        {/* GST */}
+                        <td className="text-center">
+                          <span className={`badge ${item.gstEnabled ? 'badge-green' : 'badge-gray'}`}>
+                            {item.gstEnabled ? 'GST' : 'No GST'}
                           </span>
                         </td>
 
+                        {/* Last Sold */}
+                        <td className="text-center text-sm text-gray-600">
+                          {formatDate(item.lastSoldAt)}
+                        </td>
+
                         {/* Stock */}
-                        <td className="px-4 py-3 text-right">
-                          <span className={`inline-flex items-center justify-center min-w-[3rem] px-2 py-1 rounded-full text-sm font-semibold ${
-                            item.stockCount > 10
-                              ? 'bg-green-100 text-green-700'
-                              : item.stockCount > 0
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-red-100 text-red-700'
+                        <td className="text-right">
+                          <span className={`badge ${
+                            item.stockCount > 10 ? 'badge-green' :
+                            item.stockCount > 0 ? 'badge-yellow' : 'badge-red'
                           }`}>
                             {item.stockCount}
                           </span>
@@ -480,11 +466,10 @@ export default function InventoryPage() {
           </div>
         )}
 
-        {/* Info Footer */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Cost prices are loaded from Square. Click to manually override (saved on server).</p>
-          <p className="mt-1 text-xs text-gray-400">
-            <span className="text-blue-500">*</span> = manual override | Regular text = from Square | Read-only (never edits Square)
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-400">
+            <span className="text-blue-500">*</span> Manual override · Read-only dashboard · Data from Square
           </p>
         </div>
       </main>

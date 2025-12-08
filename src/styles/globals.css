@@ -1,19 +1,25 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #1e293b;
-}
+/* Chanel-inspired elegant serif font - using Cormorant Garamond as a similar free alternative */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap');
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+:root {
+  --background: #ffffff;
+  --foreground: #1d1d1f;
+  --gray-light: #f5f5f7;
+  --gray-medium: #86868b;
+  --gray-dark: #1d1d1f;
+  --accent: #0071e3;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -22,127 +28,231 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
-/* Glassy Card Effect */
-.glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 16px;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.05),
-    0 10px 15px -3px rgba(0, 0, 0, 0.08),
-    0 20px 25px -5px rgba(0, 0, 0, 0.05),
-    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+/* Apple-style typography */
+.font-serif {
+  font-family: var(--font-serif);
 }
 
-/* Glassy Header */
-.glass-header {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.04),
-    0 4px 6px -1px rgba(0, 0, 0, 0.03);
+.font-sans {
+  font-family: var(--font-sans);
 }
 
-/* Glassy Stat Box */
-.glass-stat {
-  display: flex;
-  flex-direction: column;
+/* Elegant header styling - Chanel inspired */
+.app-title {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.business-name {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: var(--gray-medium);
+}
+
+/* Apple-style clean containers */
+.apple-card {
+  background: var(--background);
+  border-radius: 18px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04),
+              0 2px 8px rgba(0, 0, 0, 0.04),
+              0 12px 32px rgba(0, 0, 0, 0.06);
+}
+
+.apple-header {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Minimal stat pill */
+.stat-pill {
+  display: inline-flex;
   align-items: center;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 12px;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.03),
-    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--gray-light);
+  border-radius: 980px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-dark);
 }
 
-/* Custom Scrollbar */
+/* Apple-style search */
+.apple-search {
+  background: var(--gray-light);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px 10px 40px;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--foreground);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.apple-search:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2);
+  background: var(--background);
+}
+
+.apple-search::placeholder {
+  color: var(--gray-medium);
+}
+
+/* Apple-style table */
+.apple-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.apple-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--background);
+  z-index: 10;
+}
+
+.apple-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.apple-table td {
+  padding: 16px;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  vertical-align: middle;
+}
+
+.apple-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.apple-table tbody tr:hover {
+  background: var(--gray-light);
+}
+
+/* Status badges - minimal Apple style */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-green {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.badge-yellow {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.badge-red {
+  background: #ffebee;
+  color: #b71c1c;
+}
+
+.badge-gray {
+  background: var(--gray-light);
+  color: var(--gray-medium);
+}
+
+/* GP percentage colors */
+.gp-excellent { color: #1b5e20; }
+.gp-good { color: #f57f17; }
+.gp-low { color: #e65100; }
+.gp-negative { color: #b71c1c; }
+
+/* Apple-style button */
+.apple-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.apple-button:hover {
+  background: #0077ed;
+  transform: scale(1.02);
+}
+
+.apple-button-secondary {
+  background: var(--gray-light);
+  color: var(--accent);
+}
+
+.apple-button-secondary:hover {
+  background: #e8e8ed;
+}
+
+/* Loading spinner */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--gray-light);
+  border-top-color: var(--gray-medium);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition: all 0.2s ease;
+}
+
+/* Custom scrollbar - minimal */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(241, 245, 249, 0.5);
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
+  background: rgba(0, 0, 0, 0.25);
 }
 
-/* Table hover effect */
-.glass-card table tbody tr {
-  transition: background-color 0.15s ease;
-}
-
-/* Focus styles */
-input:focus, button:focus {
-  outline: none;
-}
-
-/* Smooth transitions */
-.transition-colors {
-  transition-property: color, background-color, border-color;
-  transition-duration: 150ms;
-  transition-timing-function: ease;
-}
-
-.transition-opacity {
-  transition-property: opacity;
-  transition-duration: 150ms;
-  transition-timing-function: ease;
-}
-
-.transition-all {
-  transition-property: all;
-  transition-duration: 200ms;
-  transition-timing-function: ease;
-}
-
-/* Badge animations */
-.rounded-full {
-  transition: transform 0.1s ease;
-}
-
-.rounded-full:hover {
-  transform: scale(1.02);
-}
-
-/* Loading spinner animation */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-/* Subtle gradient overlay for depth */
-.bg-gradient-to-br {
-  background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
-}
-
-/* Input styling */
+/* Input number arrows hidden */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -153,22 +263,29 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* Selection color */
+/* Selection */
 ::selection {
-  background-color: rgba(59, 130, 246, 0.2);
-  color: inherit;
+  background: rgba(0, 113, 227, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .app-title {
+    font-size: 1.5rem;
+    letter-spacing: 0.15em;
+  }
 }
 
 /* Print styles */
 @media print {
-  .glass-card, .glass-header {
+  .apple-header {
+    position: relative;
     background: white;
     backdrop-filter: none;
-    box-shadow: none;
-    border: 1px solid #e2e8f0;
   }
 
-  .sticky {
-    position: relative;
+  .apple-card {
+    box-shadow: none;
+    border: 1px solid #e0e0e0;
   }
 }
