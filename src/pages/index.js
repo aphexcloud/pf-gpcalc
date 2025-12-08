@@ -235,22 +235,23 @@ export default function ProfitDashboard() {
     <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="apple-header sticky top-0 z-50">
-        <div className="max-w-[1400px] mx-auto px-6 py-5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-            {/* Title & Business Name */}
-            <div className="text-center lg:text-left">
-              <h1 className="app-title text-2xl lg:text-3xl text-gray-900">
-                Profit Dashboard
-              </h1>
-              {merchant?.name && (
-                <p className="business-name text-sm mt-1">{merchant.name}</p>
-              )}
-            </div>
+        <div className="max-w-[1400px] mx-auto px-6 py-6">
+          {/* Centered Title & Business Name */}
+          <div className="text-center mb-6">
+            <h1 className="app-title text-3xl lg:text-4xl text-gray-900 mb-2">
+              Profit Dashboard
+            </h1>
+            {merchant?.name && (
+              <p className="business-name text-lg lg:text-xl">{merchant.name}</p>
+            )}
+          </div>
 
+          {/* Search & Stats Row */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             {/* Search */}
-            <div className="relative flex-1 max-w-md mx-auto lg:mx-0">
+            <div className="relative w-full max-w-xl">
               <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -262,14 +263,14 @@ export default function ProfitDashboard() {
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="apple-search"
+                className="apple-search pl-12"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -277,7 +278,7 @@ export default function ProfitDashboard() {
             </div>
 
             {/* Stats */}
-            <div className="flex justify-center gap-3">
+            <div className="flex gap-3">
               <div className="stat-pill">
                 <span className="text-gray-500">{filteredInventory.length}</span>
                 <span>Products</span>
