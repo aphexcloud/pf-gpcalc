@@ -9,7 +9,8 @@ services:
       - SQUARE_ENVIRONMENT=${SQUARE_ENVIRONMENT}
       - SQUARE_ACCESS_TOKEN=${SQUARE_ACCESS_TOKEN}
     volumes:
-      - gpcalc-data:/app/data
+      - truenas:/app/data
 
 volumes:
-  gpcalc-data:
+  truenas:
+    external: true
