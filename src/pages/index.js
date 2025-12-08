@@ -507,7 +507,7 @@ export default function ProfitDashboard() {
                       Cost <SortIndicator columnKey="cost" />
                     </th>
                     <th
-                      className="text-right cursor-pointer hover:text-gray-700 transition-colors"
+                      className="text-right cursor-pointer hover:text-gray-700 transition-colors whitespace-nowrap"
                       onClick={() => handleSort('gp')}
                     >
                       GP% <SortIndicator columnKey="gp" />
@@ -515,7 +515,7 @@ export default function ProfitDashboard() {
                     <th className="text-right">Margin</th>
                     <th className="text-center">GST</th>
                     <th
-                      className="text-center cursor-pointer hover:text-gray-700 transition-colors"
+                      className="text-center cursor-pointer hover:text-gray-700 transition-colors whitespace-nowrap"
                       onClick={() => handleSort('lastSold')}
                     >
                       Last Sold <SortIndicator columnKey="lastSold" />
