@@ -17,6 +17,18 @@ const db = new Database(path.join(DATA_DIR, "auth.db"));
 // Custom column permissions - stored in user metadata
 const COLUMN_PERMISSIONS = ['sell', 'cost', 'gp', 'margin', 'gst', 'lastSold', 'stock'];
 
+// Helper to check if any users exist
+function isFirstUser() {
+  try {
+    const stmt = db.prepare("SELECT COUNT(*) as count FROM user");
+    const result = stmt.get();
+    return result.count === 0;
+  } catch {
+    // Table might not exist yet
+    return true;
+  }
+}
+
 export const auth = betterAuth({
   database: db,
   emailAndPassword: {
@@ -50,6 +62,25 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env.BETTER_AUTH_URL || "http://localhost:3000",
   ],
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          // Make first user an admin
+          if (isFirstUser()) {
+            console.log(`First user ${user.email} - granting admin role`);
+            return {
+              data: {
+                ...user,
+                role: "admin",
+              },
+            };
+          }
+          return { data: user };
+        },
+      },
+    },
+  },
 });
 
 export { COLUMN_PERMISSIONS };
