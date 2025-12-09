@@ -12,11 +12,18 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const db = new Database(path.join(DATA_DIR, "auth.db"));
+// Singleton pattern to prevent multiple database connections
+const globalForDb = globalThis;
+const dbPath = path.join(DATA_DIR, "auth.db");
 
-// Enable WAL mode and set busy timeout for concurrent access
-db.pragma('journal_mode = WAL');
-db.pragma('busy_timeout = 5000');
+if (!globalForDb.authDb) {
+  globalForDb.authDb = new Database(dbPath);
+  // Enable WAL mode and set busy timeout for concurrent access
+  globalForDb.authDb.pragma('journal_mode = WAL');
+  globalForDb.authDb.pragma('busy_timeout = 5000');
+}
+
+const db = globalForDb.authDb;
 
 // Create tables if they don't exist
 db.exec(`
