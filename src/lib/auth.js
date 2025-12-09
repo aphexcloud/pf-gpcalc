@@ -14,6 +14,10 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const db = new Database(path.join(DATA_DIR, "auth.db"));
 
+// Enable WAL mode and set busy timeout for concurrent access
+db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 5000');
+
 // Create tables if they don't exist
 db.exec(`
   CREATE TABLE IF NOT EXISTS user (
