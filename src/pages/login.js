@@ -134,7 +134,7 @@ export default function LoginPage() {
               setIsSignUp(!isSignUp);
               setError('');
             }}
-            className="text-sm text-blue-600 hover:text-blue-700"
+            className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
           >
             {isSignUp
               ? 'Already have an account? Sign in'
