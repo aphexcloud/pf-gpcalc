@@ -109,8 +109,24 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url, token }, request) => {
-      // For now, log to console - in production, integrate with email service
-      console.log(`Password reset for ${user.email}: ${url}`);
+      try {
+        // Import email service dynamically
+        const { sendPasswordResetEmail } = await import('./email.js');
+
+        const result = await sendPasswordResetEmail(user.email, url);
+
+        if (result.success) {
+          console.log(`Password reset email sent to ${user.email}`);
+        } else if (result.fallback) {
+          console.log(`Password reset for ${user.email}: ${url} (SMTP not configured)`);
+        } else {
+          console.error(`Failed to send password reset to ${user.email}:`, result.error);
+          console.log(`Password reset URL: ${url}`);
+        }
+      } catch (err) {
+        console.error('Error sending password reset email:', err);
+        console.log(`Password reset for ${user.email}: ${url}`);
+      }
     },
   },
   user: {

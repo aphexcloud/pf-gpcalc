@@ -87,7 +87,44 @@ export default function UsersPage() {
       if (result.error) {
         setError(result.error.message || 'Failed to invite user');
       } else {
-        setInviteSuccess(`User invited! Temporary password: ${tempPassword}`);
+        // User created successfully - now try to send email invitation
+        try {
+          const emailRes = await fetch('/api/email/send-invitation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: inviteEmail,
+              name: inviteName,
+              tempPassword: tempPassword
+            })
+          });
+
+          const emailResult = await emailRes.json();
+
+          if (emailResult.success) {
+            setInviteSuccess(
+              `User invited successfully! An email has been sent to ${inviteEmail} with login instructions.`
+            );
+          } else if (emailResult.fallback) {
+            // SMTP not configured - show password to admin
+            setInviteSuccess(
+              `User invited! Email not configured. Temporary password: ${tempPassword}\nPlease share this with the user.`
+            );
+          } else {
+            // Email failed - show password to admin as fallback
+            setInviteSuccess(
+              `User created but email failed to send.\nTemporary password: ${tempPassword}\nError: ${emailResult.error || 'Unknown error'}\n\nPlease share the password with the user manually.`
+            );
+          }
+        } catch (emailError) {
+          // Email API error - show password to admin
+          console.error('Email error:', emailError);
+          setInviteSuccess(
+            `User invited! Email failed to send.\nTemporary password: ${tempPassword}\nPlease share this with the user.`
+          );
+        }
+
+        // Reset form
         setInviteEmail('');
         setInviteName('');
         setInviteRole('user');

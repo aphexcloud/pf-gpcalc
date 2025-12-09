@@ -10,6 +10,21 @@ const DEFAULT_SETTINGS = {
     excellent: 50,  // Green: >= 50%
     good: 30,       // Yellow: >= 30%
     low: 0          // Orange: >= 0%, Red: < 0%
+  },
+  smtp: {
+    enabled: false,
+    host: '',
+    port: 587,
+    secure: false,
+    from: {
+      name: '',
+      address: ''
+    },
+    auth: {
+      user: '',
+      pass: ''
+    },
+    testRecipient: ''
   }
 };
 

@@ -54,6 +54,21 @@ export default function ProfitDashboard() {
   const [gpThresholds, setGpThresholds] = useState(DEFAULT_THRESHOLDS);
   const [tempThresholds, setTempThresholds] = useState(DEFAULT_THRESHOLDS);
 
+  // SMTP Settings
+  const [smtpSettings, setSmtpSettings] = useState({
+    enabled: false,
+    host: '',
+    port: 587,
+    secure: false,
+    from: { name: '', address: '' },
+    auth: { user: '', pass: '' },
+    testRecipient: ''
+  });
+  const [tempSmtpSettings, setTempSmtpSettings] = useState(smtpSettings);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState(null);
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+
   // Column permissions from user
   const [columnPermissions, setColumnPermissions] = useState(ALL_COLUMNS);
 
@@ -91,6 +106,10 @@ export default function ProfitDashboard() {
           if (data.gpThresholds) {
             setGpThresholds(data.gpThresholds);
             setTempThresholds(data.gpThresholds);
+          }
+          if (data.smtp) {
+            setSmtpSettings(data.smtp);
+            setTempSmtpSettings(data.smtp);
           }
         }
       } catch (err) {
@@ -153,14 +172,42 @@ export default function ProfitDashboard() {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gpThresholds: tempThresholds })
+        body: JSON.stringify({
+          gpThresholds: tempThresholds,
+          smtp: tempSmtpSettings
+        })
       });
       if (res.ok) {
         setGpThresholds(tempThresholds);
+        setSmtpSettings(tempSmtpSettings);
         setSettingsOpen(false);
       }
     } catch (err) {
       console.error('Failed to save settings:', err);
+    }
+  };
+
+  // Test email configuration
+  const handleTestEmail = async () => {
+    setTestingEmail(true);
+    setTestEmailResult(null);
+
+    try {
+      const res = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ smtpSettings: tempSmtpSettings })
+      });
+
+      const result = await res.json();
+      setTestEmailResult(result);
+    } catch (err) {
+      setTestEmailResult({
+        success: false,
+        error: 'Failed to send test email'
+      });
+    } finally {
+      setTestingEmail(false);
     }
   };
 
@@ -493,6 +540,179 @@ export default function ProfitDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {/* SMTP Email Settings - Admin Only */}
+                {session.user.role === 'admin' && (
+                  <div className="pt-6 border-t">
+                    <h3 className="text-sm font-medium text-gray-700 mb-4">Email Settings</h3>
+
+                    {/* Enable Email Toggle */}
+                    <div className="mb-4">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={tempSmtpSettings.enabled}
+                          onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                          className="mr-2 rounded"
+                        />
+                        <span className="text-sm text-gray-700">Enable Email Sending</span>
+                      </label>
+                    </div>
+
+                    {tempSmtpSettings.enabled && (
+                      <div className="space-y-3">
+                        {/* SMTP Host */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">SMTP Host</label>
+                          <input
+                            type="text"
+                            value={tempSmtpSettings.host}
+                            onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, host: e.target.value }))}
+                            placeholder="smtp.gmail.com"
+                            className="apple-search w-full"
+                          />
+                        </div>
+
+                        {/* SMTP Port */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Port</label>
+                          <input
+                            type="number"
+                            value={tempSmtpSettings.port}
+                            onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, port: parseInt(e.target.value) || 587 }))}
+                            className="apple-search w-full"
+                          />
+                        </div>
+
+                        {/* Use TLS/SSL */}
+                        <div>
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={tempSmtpSettings.secure}
+                              onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, secure: e.target.checked }))}
+                              className="mr-2 rounded"
+                            />
+                            <span className="text-xs text-gray-700">Use SSL (port 465)</span>
+                          </label>
+                        </div>
+
+                        {/* From Name */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">From Name</label>
+                          <input
+                            type="text"
+                            value={tempSmtpSettings.from.name}
+                            onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, from: { ...prev.from, name: e.target.value } }))}
+                            placeholder="GP Calculator"
+                            className="apple-search w-full"
+                          />
+                        </div>
+
+                        {/* From Email */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">From Email Address</label>
+                          <input
+                            type="email"
+                            value={tempSmtpSettings.from.address}
+                            onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, from: { ...prev.from, address: e.target.value } }))}
+                            placeholder="noreply@example.com"
+                            className="apple-search w-full"
+                          />
+                        </div>
+
+                        {/* SMTP Username */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">SMTP Username</label>
+                          <input
+                            type="text"
+                            value={tempSmtpSettings.auth.user}
+                            onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, auth: { ...prev.auth, user: e.target.value } }))}
+                            placeholder="username or email"
+                            className="apple-search w-full"
+                          />
+                        </div>
+
+                        {/* SMTP Password */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">SMTP Password</label>
+                          <div className="relative">
+                            <input
+                              type={showSmtpPassword ? "text" : "password"}
+                              value={tempSmtpSettings.auth.pass}
+                              onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, auth: { ...prev.auth, pass: e.target.value } }))}
+                              placeholder="password or app password"
+                              className="apple-search w-full pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showSmtpPassword ? (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">For Gmail, use an App Password</p>
+                        </div>
+
+                        {/* Test Email Recipient */}
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Test Email Recipient</label>
+                          <input
+                            type="email"
+                            value={tempSmtpSettings.testRecipient}
+                            onChange={(e) => setTempSmtpSettings(prev => ({ ...prev, testRecipient: e.target.value }))}
+                            placeholder="test@example.com"
+                            className="apple-search w-full"
+                          />
+                        </div>
+
+                        {/* Test Email Button */}
+                        <div>
+                          <button
+                            onClick={handleTestEmail}
+                            disabled={testingEmail || !tempSmtpSettings.testRecipient}
+                            className="w-full apple-button apple-button-secondary"
+                          >
+                            {testingEmail ? 'Sending...' : 'Test Email Configuration'}
+                          </button>
+                        </div>
+
+                        {/* Test Result */}
+                        {testEmailResult && (
+                          <div className={`p-3 rounded text-sm ${
+                            testEmailResult.success
+                              ? 'bg-green-50 text-green-800 border border-green-200'
+                              : 'bg-red-50 text-red-800 border border-red-200'
+                          }`}>
+                            {testEmailResult.success ? (
+                              <div className="flex items-start gap-2">
+                                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span>Test email sent successfully!</span>
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="font-medium mb-1">Failed to send test email</div>
+                                <div className="text-xs">{testEmailResult.error}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="pt-4 border-t">
                   <button
