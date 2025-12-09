@@ -11,8 +11,8 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL}
     volumes:
-      - truenas:/app/data
+      - PF_GP_DASH:/app/data
 
 volumes:
-  truenas:
-    external: true
+  PF_GP_DASH:
+    driver: local
