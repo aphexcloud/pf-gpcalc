@@ -52,6 +52,10 @@ COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlit
 COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
 COPY --from=builder /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
 
+# Copy init script
+COPY --from=builder /app/scripts ./scripts
+RUN chmod +x /app/scripts/start.sh
+
 USER nextjs
 
 EXPOSE 3000
@@ -62,4 +66,4 @@ ENV HOSTNAME="0.0.0.0"
 # Volume for persistent data
 VOLUME ["/app/data"]
 
-CMD ["node", "server.js"]
+CMD ["/bin/sh", "/app/scripts/start.sh"]
