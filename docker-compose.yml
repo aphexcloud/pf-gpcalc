@@ -8,6 +8,8 @@ services:
     environment:
       - SQUARE_ENVIRONMENT=${SQUARE_ENVIRONMENT}
       - SQUARE_ACCESS_TOKEN=${SQUARE_ACCESS_TOKEN}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
     volumes:
       - truenas:/app/data
 

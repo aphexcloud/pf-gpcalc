@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/router';
+import { useSession, signOut } from '@/lib/auth-client';
 
 // Format date for display
 function formatDate(dateString) {
@@ -30,7 +32,13 @@ const DEFAULT_THRESHOLDS = {
   low: 0
 };
 
+// All column keys
+const ALL_COLUMNS = ['sell', 'cost', 'gp', 'margin', 'gst', 'lastSold', 'stock'];
+
 export default function ProfitDashboard() {
+  const router = useRouter();
+  const { data: session, isPending } = useSession();
+
   const [inventory, setInventory] = useState([]);
   const [merchant, setMerchant] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +53,33 @@ export default function ProfitDashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [gpThresholds, setGpThresholds] = useState(DEFAULT_THRESHOLDS);
   const [tempThresholds, setTempThresholds] = useState(DEFAULT_THRESHOLDS);
+
+  // Column permissions from user
+  const [columnPermissions, setColumnPermissions] = useState(ALL_COLUMNS);
+
+  // Check auth and redirect if not logged in
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push('/login');
+    }
+  }, [session, isPending, router]);
+
+  // Load user column permissions
+  useEffect(() => {
+    if (session?.user) {
+      try {
+        const perms = session.user.columnPermissions
+          ? JSON.parse(session.user.columnPermissions)
+          : ALL_COLUMNS;
+        setColumnPermissions(perms);
+      } catch {
+        setColumnPermissions(ALL_COLUMNS);
+      }
+    }
+  }, [session]);
+
+  // Check if user can see a column
+  const canSee = (col) => columnPermissions.includes(col);
 
   // Load settings from server
   useEffect(() => {
@@ -136,21 +171,44 @@ export default function ProfitDashboard() {
   };
 
   const handleCostSave = async (id) => {
-    const cost = parseFloat(tempCost);
-    if (!isNaN(cost) && cost >= 0) {
+    const costValue = tempCost.trim();
+
+    // If empty, clear the cost
+    if (costValue === '') {
       try {
         const res = await fetch('/api/cost-overrides', {
-          method: 'POST',
+          method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, cost })
+          body: JSON.stringify({ id })
         });
         if (res.ok) {
-          setCostPrices(prev => ({ ...prev, [id]: cost }));
+          setCostPrices(prev => {
+            const newPrices = { ...prev };
+            delete newPrices[id];
+            return newPrices;
+          });
         }
       } catch (err) {
-        console.error('Failed to save cost override:', err);
+        console.error('Failed to clear cost override:', err);
+      }
+    } else {
+      const cost = parseFloat(costValue);
+      if (!isNaN(cost) && cost >= 0) {
+        try {
+          const res = await fetch('/api/cost-overrides', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, cost })
+          });
+          if (res.ok) {
+            setCostPrices(prev => ({ ...prev, [id]: cost }));
+          }
+        } catch (err) {
+          console.error('Failed to save cost override:', err);
+        }
       }
     }
+
     setEditingId(null);
     setTempCost('');
   };
@@ -161,6 +219,26 @@ export default function ProfitDashboard() {
     } else if (e.key === 'Escape') {
       setEditingId(null);
       setTempCost('');
+    }
+  };
+
+  // Clear cost override
+  const handleClearCost = async (id) => {
+    try {
+      const res = await fetch('/api/cost-overrides', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        setCostPrices(prev => {
+          const newPrices = { ...prev };
+          delete newPrices[id];
+          return newPrices;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to clear cost override:', err);
     }
   };
 
@@ -178,6 +256,12 @@ export default function ProfitDashboard() {
     if (gpPercent >= gpThresholds.good) return 'gp-good';
     if (gpPercent >= gpThresholds.low) return 'gp-low';
     return 'gp-negative';
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/login');
   };
 
   // Filter and sort inventory
@@ -250,6 +334,23 @@ export default function ProfitDashboard() {
     );
   };
 
+  // Show loading while checking auth
+  if (isPending) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="spinner mx-auto mb-6"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect handled by useEffect, show nothing while redirecting
+  if (!session?.user) {
+    return null;
+  }
+
   // Loading State
   if (loading) {
     return (
@@ -311,6 +412,17 @@ export default function ProfitDashboard() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+              </div>
+
+              {/* User Info */}
+              <div className="mb-6 pb-6 border-b">
+                <p className="text-sm text-gray-500">Signed in as</p>
+                <p className="font-medium text-gray-900">{session.user.email}</p>
+                {session.user.role === 'admin' && (
+                  <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                    Admin
+                  </span>
+                )}
               </div>
 
               {/* GP Thresholds */}
@@ -390,6 +502,28 @@ export default function ProfitDashboard() {
                     Save Settings
                   </button>
                 </div>
+
+                {/* Admin Link */}
+                {session.user.role === 'admin' && (
+                  <div className="pt-4 border-t">
+                    <button
+                      onClick={() => router.push('/admin/users')}
+                      className="w-full apple-button apple-button-secondary"
+                    >
+                      Manage Users
+                    </button>
+                  </div>
+                )}
+
+                {/* Logout */}
+                <div className="pt-4 border-t">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-red-600 hover:text-red-700 text-sm font-medium py-2"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -460,10 +594,12 @@ export default function ProfitDashboard() {
                 <span className="text-gray-500">{filteredInventory.length}</span>
                 <span>Products</span>
               </div>
-              <div className="stat-pill">
-                <span className="text-green-600">{filteredInventory.filter(i => costPrices[i.id] ?? i.costPrice).length}</span>
-                <span>With Cost</span>
-              </div>
+              {canSee('cost') && (
+                <div className="stat-pill">
+                  <span className="text-green-600">{filteredInventory.filter(i => costPrices[i.id] ?? i.costPrice).length}</span>
+                  <span>With Cost</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -494,46 +630,60 @@ export default function ProfitDashboard() {
                       Product <SortIndicator columnKey="name" />
                     </th>
                     <th>SKU</th>
-                    <th
-                      className="text-right cursor-pointer hover:text-gray-700 transition-colors"
-                      onClick={() => handleSort('price')}
-                    >
-                      Sell <SortIndicator columnKey="price" />
-                    </th>
-                    <th
-                      className="text-right cursor-pointer hover:text-gray-700 transition-colors"
-                      onClick={() => handleSort('cost')}
-                    >
-                      Cost <SortIndicator columnKey="cost" />
-                    </th>
-                    <th
-                      className="text-right cursor-pointer hover:text-gray-700 transition-colors whitespace-nowrap"
-                      onClick={() => handleSort('gp')}
-                    >
-                      GP% <SortIndicator columnKey="gp" />
-                    </th>
-                    <th className="text-right">Margin</th>
-                    <th className="text-center">GST</th>
-                    <th
-                      className="text-center cursor-pointer hover:text-gray-700 transition-colors whitespace-nowrap"
-                      onClick={() => handleSort('lastSold')}
-                    >
-                      Last Sold <SortIndicator columnKey="lastSold" />
-                    </th>
-                    <th
-                      className="text-right cursor-pointer hover:text-gray-700 transition-colors"
-                      onClick={() => handleSort('stock')}
-                    >
-                      Stock <SortIndicator columnKey="stock" />
-                    </th>
+                    {canSee('sell') && (
+                      <th
+                        className="text-right cursor-pointer hover:text-gray-700 transition-colors"
+                        onClick={() => handleSort('price')}
+                      >
+                        Sell <SortIndicator columnKey="price" />
+                      </th>
+                    )}
+                    {canSee('cost') && (
+                      <th
+                        className="text-right cursor-pointer hover:text-gray-700 transition-colors"
+                        onClick={() => handleSort('cost')}
+                      >
+                        Cost <SortIndicator columnKey="cost" />
+                      </th>
+                    )}
+                    {canSee('gp') && (
+                      <th
+                        className="text-right cursor-pointer hover:text-gray-700 transition-colors whitespace-nowrap"
+                        onClick={() => handleSort('gp')}
+                      >
+                        GP% <SortIndicator columnKey="gp" />
+                      </th>
+                    )}
+                    {canSee('margin') && (
+                      <th className="text-right">Margin</th>
+                    )}
+                    {canSee('gst') && (
+                      <th className="text-center">GST</th>
+                    )}
+                    {canSee('lastSold') && (
+                      <th
+                        className="text-center cursor-pointer hover:text-gray-700 transition-colors whitespace-nowrap"
+                        onClick={() => handleSort('lastSold')}
+                      >
+                        Last Sold <SortIndicator columnKey="lastSold" />
+                      </th>
+                    )}
+                    {canSee('stock') && (
+                      <th
+                        className="text-right cursor-pointer hover:text-gray-700 transition-colors"
+                        onClick={() => handleSort('stock')}
+                      >
+                        Stock <SortIndicator columnKey="stock" />
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredInventory.map((item) => {
                     const cost = costPrices[item.id] ?? item.costPrice;
                     const { gpPercent, margin } = calculateProfit(item.price, cost);
-                    // Check both isTaxable (new) and gstEnabled (legacy) for backwards compatibility
                     const showGst = item.isTaxable ?? item.gstEnabled ?? false;
+                    const hasOverride = costPrices[item.id] !== undefined;
 
                     return (
                       <tr key={item.id}>
@@ -553,86 +703,114 @@ export default function ProfitDashboard() {
                         </td>
 
                         {/* Sell Price */}
-                        <td className="text-right font-medium">
-                          ${item.price?.toFixed(2) || '0.00'}
-                        </td>
+                        {canSee('sell') && (
+                          <td className="text-right font-medium">
+                            ${item.price?.toFixed(2) || '0.00'}
+                          </td>
+                        )}
 
                         {/* Cost Price */}
-                        <td className="text-right">
-                          {editingId === item.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={tempCost}
-                              onChange={(e) => setTempCost(e.target.value)}
-                              onBlur={() => handleCostSave(item.id)}
-                              onKeyDown={(e) => handleCostKeyDown(e, item.id)}
-                              className="w-20 px-2 py-1 text-right text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              autoFocus
-                            />
-                          ) : (
-                            <button
-                              onClick={() => handleCostEdit(item.id, cost)}
-                              className="group inline-flex items-center gap-1 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
-                            >
-                              {cost ? (
-                                <span className={costPrices[item.id] ? 'text-blue-600' : 'text-gray-700'}>
-                                  ${cost.toFixed(2)}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-sm">Set</span>
-                              )}
-                              {costPrices[item.id] && (
-                                <span className="text-blue-400 text-xs">*</span>
-                              )}
-                            </button>
-                          )}
-                        </td>
+                        {canSee('cost') && (
+                          <td className="text-right">
+                            {editingId === item.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={tempCost}
+                                onChange={(e) => setTempCost(e.target.value)}
+                                onBlur={() => handleCostSave(item.id)}
+                                onKeyDown={(e) => handleCostKeyDown(e, item.id)}
+                                placeholder="Clear to remove"
+                                className="w-24 px-2 py-1 text-right text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                autoFocus
+                              />
+                            ) : (
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  onClick={() => handleCostEdit(item.id, cost)}
+                                  className="group inline-flex items-center gap-1 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
+                                >
+                                  {cost ? (
+                                    <span className={hasOverride ? 'text-blue-600' : 'text-gray-700'}>
+                                      ${cost.toFixed(2)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">Set</span>
+                                  )}
+                                  {hasOverride && (
+                                    <span className="text-blue-400 text-xs">*</span>
+                                  )}
+                                </button>
+                                {hasOverride && (
+                                  <button
+                                    onClick={() => handleClearCost(item.id)}
+                                    className="text-gray-400 hover:text-red-500 p-1"
+                                    title="Clear override"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        )}
 
                         {/* GP% */}
-                        <td className="text-right">
-                          {gpPercent !== null ? (
-                            <span className={`font-semibold ${getGpColorClass(gpPercent)}`}>
-                              {gpPercent.toFixed(1)}%
-                            </span>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
+                        {canSee('gp') && (
+                          <td className="text-right">
+                            {gpPercent !== null ? (
+                              <span className={`font-semibold ${getGpColorClass(gpPercent)}`}>
+                                {gpPercent.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                        )}
 
-                        {/* Margin - no color */}
-                        <td className="text-right">
-                          {margin !== null ? (
-                            <span className="text-gray-700">
-                              ${margin.toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
+                        {/* Margin */}
+                        {canSee('margin') && (
+                          <td className="text-right">
+                            {margin !== null ? (
+                              <span className="text-gray-700">
+                                ${margin.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                        )}
 
                         {/* GST */}
-                        <td className="text-center">
-                          <span className={`badge ${showGst ? 'badge-green' : 'badge-gray'}`}>
-                            {showGst ? 'GST' : 'No GST'}
-                          </span>
-                        </td>
+                        {canSee('gst') && (
+                          <td className="text-center">
+                            <span className={`badge ${showGst ? 'badge-green' : 'badge-gray'}`}>
+                              {showGst ? 'GST' : 'No GST'}
+                            </span>
+                          </td>
+                        )}
 
                         {/* Last Sold */}
-                        <td className="text-center text-sm text-gray-600">
-                          {formatDate(item.lastSoldAt)}
-                        </td>
+                        {canSee('lastSold') && (
+                          <td className="text-center text-sm text-gray-600">
+                            {formatDate(item.lastSoldAt)}
+                          </td>
+                        )}
 
                         {/* Stock */}
-                        <td className="text-right">
-                          <span className={`badge ${
-                            item.stockCount > 10 ? 'badge-green' :
-                            item.stockCount > 0 ? 'badge-yellow' : 'badge-red'
-                          }`}>
-                            {item.stockCount}
-                          </span>
-                        </td>
+                        {canSee('stock') && (
+                          <td className="text-right">
+                            <span className={`badge ${
+                              item.stockCount > 10 ? 'badge-green' :
+                              item.stockCount > 0 ? 'badge-yellow' : 'badge-red'
+                            }`}>
+                              {item.stockCount}
+                            </span>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
