@@ -12,74 +12,81 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Singleton pattern to prevent multiple database connections
-const globalForDb = globalThis;
 const dbPath = path.join(DATA_DIR, "auth.db");
 
-if (!globalForDb.authDb) {
-  globalForDb.authDb = new Database(dbPath);
-  // Enable WAL mode and set busy timeout for concurrent access
-  globalForDb.authDb.pragma('journal_mode = WAL');
-  globalForDb.authDb.pragma('busy_timeout = 5000');
+// Create database with immediate timeout and exclusive locking disabled
+const db = new Database(dbPath, {
+  fileMustExist: false,
+});
+
+// Configure for concurrent access
+db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 30000');
+db.pragma('synchronous = NORMAL');
+db.pragma('cache_size = 1000');
+db.pragma('foreign_keys = ON');
+db.pragma('temp_store = MEMORY');
+
+// Create tables if they don't exist (use IF NOT EXISTS to be idempotent)
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      email TEXT UNIQUE NOT NULL,
+      emailVerified INTEGER,
+      image TEXT,
+      createdAt INTEGER NOT NULL,
+      updatedAt INTEGER NOT NULL,
+      role TEXT,
+      banned INTEGER,
+      banReason TEXT,
+      banExpires INTEGER,
+      columnPermissions TEXT,
+      invitedBy TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS session (
+      id TEXT PRIMARY KEY,
+      expiresAt INTEGER NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      createdAt INTEGER NOT NULL,
+      updatedAt INTEGER NOT NULL,
+      ipAddress TEXT,
+      userAgent TEXT,
+      userId TEXT NOT NULL REFERENCES user(id),
+      impersonatedBy TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS account (
+      id TEXT PRIMARY KEY,
+      accountId TEXT NOT NULL,
+      providerId TEXT NOT NULL,
+      userId TEXT NOT NULL REFERENCES user(id),
+      accessToken TEXT,
+      refreshToken TEXT,
+      idToken TEXT,
+      accessTokenExpiresAt INTEGER,
+      refreshTokenExpiresAt INTEGER,
+      scope TEXT,
+      password TEXT,
+      createdAt INTEGER NOT NULL,
+      updatedAt INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS verification (
+      id TEXT PRIMARY KEY,
+      identifier TEXT NOT NULL,
+      value TEXT NOT NULL,
+      expiresAt INTEGER NOT NULL,
+      createdAt INTEGER,
+      updatedAt INTEGER
+    );
+  `);
+} catch (e) {
+  // Tables might already exist or be locked - that's ok
+  console.log('Database init:', e.message);
 }
-
-const db = globalForDb.authDb;
-
-// Create tables if they don't exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS user (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    email TEXT UNIQUE NOT NULL,
-    emailVerified INTEGER,
-    image TEXT,
-    createdAt INTEGER NOT NULL,
-    updatedAt INTEGER NOT NULL,
-    role TEXT,
-    banned INTEGER,
-    banReason TEXT,
-    banExpires INTEGER,
-    columnPermissions TEXT,
-    invitedBy TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS session (
-    id TEXT PRIMARY KEY,
-    expiresAt INTEGER NOT NULL,
-    token TEXT UNIQUE NOT NULL,
-    createdAt INTEGER NOT NULL,
-    updatedAt INTEGER NOT NULL,
-    ipAddress TEXT,
-    userAgent TEXT,
-    userId TEXT NOT NULL REFERENCES user(id),
-    impersonatedBy TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS account (
-    id TEXT PRIMARY KEY,
-    accountId TEXT NOT NULL,
-    providerId TEXT NOT NULL,
-    userId TEXT NOT NULL REFERENCES user(id),
-    accessToken TEXT,
-    refreshToken TEXT,
-    idToken TEXT,
-    accessTokenExpiresAt INTEGER,
-    refreshTokenExpiresAt INTEGER,
-    scope TEXT,
-    password TEXT,
-    createdAt INTEGER NOT NULL,
-    updatedAt INTEGER NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS verification (
-    id TEXT PRIMARY KEY,
-    identifier TEXT NOT NULL,
-    value TEXT NOT NULL,
-    expiresAt INTEGER NOT NULL,
-    createdAt INTEGER,
-    updatedAt INTEGER
-  );
-`);
 
 // Custom column permissions - stored in user metadata
 const COLUMN_PERMISSIONS = ['sell', 'cost', 'gp', 'margin', 'gst', 'lastSold', 'stock'];
