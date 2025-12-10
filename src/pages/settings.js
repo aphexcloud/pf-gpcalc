@@ -38,6 +38,14 @@ export default function SettingsPage() {
   const [testEmailResult, setTestEmailResult] = useState(null);
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
 
+  // Change Password
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
   // Check auth and redirect if not logged in
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -143,6 +151,54 @@ export default function SettingsPage() {
       });
     } finally {
       setTestingEmail(false);
+    }
+  };
+
+  // Change Password
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setChangingPassword(true);
+    setPasswordError('');
+    setPasswordChanged(false);
+
+    // Validate passwords
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      setChangingPassword(false);
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters');
+      setChangingPassword(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setPasswordChanged(true);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => setPasswordChanged(false), 5000);
+      } else {
+        setPasswordError(data.error || 'Failed to change password');
+      }
+    } catch (err) {
+      setPasswordError('Failed to change password: ' + err.message);
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -485,6 +541,82 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Change Password Section */}
+            <div className="border-b pb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Change Password</h2>
+              <p className="text-sm text-gray-600 mb-6">
+                Update your account password. Make sure to use a strong password with at least 8 characters.
+              </p>
+
+              <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="apple-search"
+                    required
+                    minLength={8}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="apple-search"
+                    required
+                    minLength={8}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="apple-search"
+                    required
+                    minLength={8}
+                  />
+                </div>
+
+                {passwordError && (
+                  <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
+                    {passwordError}
+                  </div>
+                )}
+
+                {passwordChanged && (
+                  <div className="bg-green-50 text-green-700 text-sm p-3 rounded-lg flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Password changed successfully!
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="apple-button"
+                >
+                  {changingPassword ? 'Changing Password...' : 'Change Password'}
+                </button>
+              </form>
             </div>
           </div>
         )}
