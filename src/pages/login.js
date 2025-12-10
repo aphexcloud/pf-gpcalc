@@ -1,17 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { signIn, signUp } from '@/lib/auth-client';
+import { signIn, signUp, useSession } from '@/lib/auth-client';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, isPending } = useSession();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
+
+  // Redirect to home when session is established after successful login
+  useEffect(() => {
+    if (loginSuccess && !isPending && session?.user) {
+      router.push('/');
+    }
+  }, [loginSuccess, isPending, session, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,8 +36,10 @@ export default function LoginPage() {
         });
         if (result.error) {
           setError(result.error.message || 'Sign up failed');
+          setLoading(false);
         } else {
-          router.push('/');
+          // Wait for session to be established before redirecting
+          setLoginSuccess(true);
         }
       } else {
         const result = await signIn.email({
@@ -37,13 +48,14 @@ export default function LoginPage() {
         });
         if (result.error) {
           setError(result.error.message || 'Sign in failed');
+          setLoading(false);
         } else {
-          router.push('/');
+          // Wait for session to be established before redirecting
+          setLoginSuccess(true);
         }
       }
     } catch (err) {
       setError(err.message || 'Authentication failed');
-    } finally {
       setLoading(false);
     }
   };
