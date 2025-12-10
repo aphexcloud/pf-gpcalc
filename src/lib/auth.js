@@ -173,4 +173,14 @@ export const auth = betterAuth({
   },
 });
 
+// Initialize default admin account on startup if no users exist
+(async () => {
+  try {
+    const { initializeDefaultAdmin } = await import('./init-default-admin.js');
+    await initializeDefaultAdmin();
+  } catch (err) {
+    // Ignore errors during init - they'll be logged in the init function
+  }
+})();
+
 export { COLUMN_PERMISSIONS };

@@ -266,6 +266,28 @@ export default function UsersPage() {
           </div>
         )}
 
+        {/* Default Admin Warning */}
+        {users.some(u => u.invitedBy === 'system') && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg mb-6">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <p className="font-semibold">Default Admin Account Detected</p>
+                <p className="text-sm mt-1">
+                  A default admin account (admin@localhost) is active. For security:
+                </p>
+                <ol className="text-sm mt-2 ml-4 list-decimal space-y-1">
+                  <li>Configure SMTP settings (in Settings)</li>
+                  <li>Create a new admin account with your email</li>
+                  <li>Delete the default admin account</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Users Table */}
         <div className="apple-card overflow-hidden">
           <table className="apple-table">
@@ -284,9 +306,20 @@ export default function UsersPage() {
                   ? JSON.parse(user.columnPermissions)
                   : COLUMN_OPTIONS.map(c => c.key);
 
+                const isDefaultAdmin = user.invitedBy === 'system';
+
                 return (
-                  <tr key={user.id}>
-                    <td className="font-medium">{user.name || '—'}</td>
+                  <tr key={user.id} className={isDefaultAdmin ? 'bg-yellow-50' : ''}>
+                    <td className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{user.name || '—'}</span>
+                        {isDefaultAdmin && (
+                          <span className="text-xs px-2 py-0.5 bg-yellow-200 text-yellow-800 rounded font-semibold">
+                            DEFAULT
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="text-gray-600">{user.email}</td>
                     <td>
                       <span className={`badge ${user.role === 'admin' ? 'badge-green' : 'badge-gray'}`}>

@@ -6,6 +6,22 @@
 - **Framework**: Next.js 16 with Tailwind CSS
 - **Purpose**: Display Square inventory with profit analytics
 
+## Initial Setup (First-Time Deployment)
+
+When deploying for the first time, a default admin account is automatically created:
+
+- **Email**: `admin@localhost`
+- **Password**: `admin123`
+
+**⚠️ IMPORTANT SECURITY STEPS:**
+1. Log in with the default credentials
+2. Go to Settings → Configure SMTP (optional but recommended for user invitations)
+3. Go to User Management → Invite a new admin with your real email
+4. Log out and log in with your new admin account
+5. Delete the default admin account (`admin@localhost`)
+
+**Note**: Public signup is disabled. Only admins can invite new users.
+
 ## Square Integration
 - **Account**: Providence Foods (AU)
 - **Merchant ID**: ML6ZC7JNWT26R
