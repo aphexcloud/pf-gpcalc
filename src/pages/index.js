@@ -48,6 +48,8 @@ export default function ProfitDashboard() {
   const [editingId, setEditingId] = useState(null);
   const [tempCost, setTempCost] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [lastSync, setLastSync] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   // Settings
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -128,6 +130,10 @@ export default function ProfitDashboard() {
           setMerchant(data.merchant);
         }
 
+        if (data.lastSync) {
+          setLastSync(data.lastSync);
+        }
+
         if (Array.isArray(data.items)) {
           setInventory(data.items);
         } else if (Array.isArray(data)) {
@@ -144,6 +150,37 @@ export default function ProfitDashboard() {
     }
     fetchData();
   }, []);
+
+  // Manual refresh handler (admin only)
+  const handleManualRefresh = async () => {
+    if (syncing || session?.user?.role !== 'admin') return;
+
+    setSyncing(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/inventory/sync', { method: 'POST' });
+      const data = await res.json();
+
+      if (data.success) {
+        // Reload inventory
+        const invRes = await fetch('/api/inventory');
+        const invData = await invRes.json();
+
+        setInventory(invData.items || []);
+        setMerchant(invData.merchant);
+        setLastSync(invData.lastSync);
+
+        console.log(`Synced ${data.itemCount} items in ${data.duration}s`);
+      } else {
+        setError(data.error || 'Sync failed');
+      }
+    } catch (err) {
+      setError('Failed to refresh inventory: ' + err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
 
   // Handle cost price edit
@@ -479,6 +516,23 @@ export default function ProfitDashboard() {
               </h1>
               {merchant?.name && (
                 <p className="business-name text-lg lg:text-xl">{merchant.name}</p>
+              )}
+              {lastSync && (
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <p className="text-xs text-gray-500">
+                    Last updated: {new Date(lastSync).toLocaleString()}
+                  </p>
+                  {session?.user?.role === 'admin' && (
+                    <button
+                      onClick={handleManualRefresh}
+                      disabled={syncing}
+                      className="text-xs text-blue-600 hover:text-blue-700 underline disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Refresh from Square"
+                    >
+                      {syncing ? 'Syncing...' : 'Refresh'}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
