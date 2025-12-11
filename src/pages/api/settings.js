@@ -4,6 +4,7 @@ import path from 'path';
 
 const DATA_DIR = process.env.DATA_DIR || '/app/data';
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const BRANDING_DIR = path.join(DATA_DIR, 'branding');
 
 const DEFAULT_SETTINGS = {
   gpThresholds: {
@@ -25,6 +26,10 @@ const DEFAULT_SETTINGS = {
       pass: ''
     },
     testRecipient: ''
+  },
+  branding: {
+    hasLogo: false,
+    hasFavicon: false
   }
 };
 
@@ -34,13 +39,35 @@ function ensureDataDir() {
   }
 }
 
+function checkBrandingFiles() {
+  const branding = {
+    hasLogo: false,
+    hasFavicon: false
+  };
+
+  if (fs.existsSync(BRANDING_DIR)) {
+    const files = fs.readdirSync(BRANDING_DIR);
+    branding.hasLogo = files.some(f => f.startsWith('logo.'));
+    branding.hasFavicon = files.some(f => f.startsWith('favicon.'));
+  }
+
+  return branding;
+}
+
 function readSettings() {
   try {
     ensureDataDir();
+    let settings = DEFAULT_SETTINGS;
+
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+      settings = { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
     }
+
+    // Always check for branding files
+    settings.branding = checkBrandingFiles();
+
+    return settings;
   } catch (err) {
     console.error('Error reading settings:', err.message);
   }

@@ -55,6 +55,9 @@ export default function ProfitDashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [gpThresholds, setGpThresholds] = useState(DEFAULT_THRESHOLDS);
 
+  // Branding
+  const [hasLogo, setHasLogo] = useState(false);
+
   // Column permissions from user
   const [columnPermissions, setColumnPermissions] = useState(ALL_COLUMNS);
 
@@ -91,6 +94,9 @@ export default function ProfitDashboard() {
           const data = await res.json();
           if (data.gpThresholds) {
             setGpThresholds(data.gpThresholds);
+          }
+          if (data.branding) {
+            setHasLogo(data.branding.hasLogo);
           }
         }
       } catch (err) {
@@ -498,16 +504,31 @@ export default function ProfitDashboard() {
         <div className="max-w-[1400px] mx-auto px-6 py-6">
           {/* Menu Button & Centered Title */}
           <div className="relative mb-6">
-            {/* Hamburger Menu - Left */}
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="absolute left-0 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Settings"
-            >
-              <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            {/* Left Side: Menu & Logo */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-3">
+              {/* Hamburger Menu */}
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Settings"
+              >
+                <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+
+              {/* Company Logo */}
+              {hasLogo && (
+                <img
+                  src="/api/branding/serve?type=logo"
+                  alt="Company Logo"
+                  className="h-10 max-w-[150px] object-contain"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
 
             {/* Centered Title & Business Name */}
             <div className="text-center">

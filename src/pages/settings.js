@@ -46,6 +46,13 @@ export default function SettingsPage() {
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
+  // Branding
+  const [hasLogo, setHasLogo] = useState(false);
+  const [hasFavicon, setHasFavicon] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [brandingMessage, setBrandingMessage] = useState(null);
+
   // Check auth and redirect if not logged in
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -67,6 +74,10 @@ export default function SettingsPage() {
           if (data.smtp) {
             setSmtpSettings(data.smtp);
             setTempSmtpSettings(data.smtp);
+          }
+          if (data.branding) {
+            setHasLogo(data.branding.hasLogo);
+            setHasFavicon(data.branding.hasFavicon);
           }
         }
       } catch (err) {
@@ -207,6 +218,177 @@ export default function SettingsPage() {
     router.push('/login');
   };
 
+  // Handle logo upload
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/svg+xml'];
+    if (!validTypes.includes(file.type)) {
+      setBrandingMessage({ type: 'error', text: 'Please upload a PNG, JPEG, GIF, or SVG image' });
+      setTimeout(() => setBrandingMessage(null), 5000);
+      return;
+    }
+
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      setBrandingMessage({ type: 'error', text: 'Logo must be smaller than 2MB' });
+      setTimeout(() => setBrandingMessage(null), 5000);
+      return;
+    }
+
+    setUploadingLogo(true);
+    setBrandingMessage(null);
+
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result;
+
+        const res = await fetch('/api/branding/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'logo', base64Data })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          setHasLogo(true);
+          setBrandingMessage({ type: 'success', text: 'Logo uploaded successfully!' });
+          setTimeout(() => setBrandingMessage(null), 3000);
+        } else {
+          setBrandingMessage({ type: 'error', text: data.error || 'Failed to upload logo' });
+          setTimeout(() => setBrandingMessage(null), 5000);
+        }
+
+        setUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setBrandingMessage({ type: 'error', text: 'Failed to upload logo: ' + err.message });
+      setTimeout(() => setBrandingMessage(null), 5000);
+      setUploadingLogo(false);
+    }
+  };
+
+  // Handle favicon upload
+  const handleFaviconUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon'];
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.ico')) {
+      setBrandingMessage({ type: 'error', text: 'Please upload a PNG or ICO file for favicon' });
+      setTimeout(() => setBrandingMessage(null), 5000);
+      return;
+    }
+
+    // Validate file size (1MB max for favicon)
+    if (file.size > 1024 * 1024) {
+      setBrandingMessage({ type: 'error', text: 'Favicon must be smaller than 1MB' });
+      setTimeout(() => setBrandingMessage(null), 5000);
+      return;
+    }
+
+    setUploadingFavicon(true);
+    setBrandingMessage(null);
+
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        let base64Data = reader.result;
+
+        // If it's an .ico file but doesn't have the right mime type, fix it
+        if (file.name.endsWith('.ico') && !base64Data.startsWith('data:image/x-icon')) {
+          base64Data = base64Data.replace(/^data:.*?;/, 'data:image/x-icon;');
+        }
+
+        const res = await fetch('/api/branding/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'favicon', base64Data })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          setHasFavicon(true);
+          setBrandingMessage({ type: 'success', text: 'Favicon uploaded successfully! Refresh the page to see it.' });
+          setTimeout(() => setBrandingMessage(null), 5000);
+        } else {
+          setBrandingMessage({ type: 'error', text: data.error || 'Failed to upload favicon' });
+          setTimeout(() => setBrandingMessage(null), 5000);
+        }
+
+        setUploadingFavicon(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setBrandingMessage({ type: 'error', text: 'Failed to upload favicon: ' + err.message });
+      setTimeout(() => setBrandingMessage(null), 5000);
+      setUploadingFavicon(false);
+    }
+  };
+
+  // Handle logo delete
+  const handleDeleteLogo = async () => {
+    if (!confirm('Are you sure you want to delete the logo?')) return;
+
+    try {
+      const res = await fetch('/api/branding/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'logo' })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setHasLogo(false);
+        setBrandingMessage({ type: 'success', text: 'Logo deleted successfully!' });
+        setTimeout(() => setBrandingMessage(null), 3000);
+      } else {
+        setBrandingMessage({ type: 'error', text: data.error || 'Failed to delete logo' });
+        setTimeout(() => setBrandingMessage(null), 5000);
+      }
+    } catch (err) {
+      setBrandingMessage({ type: 'error', text: 'Failed to delete logo: ' + err.message });
+      setTimeout(() => setBrandingMessage(null), 5000);
+    }
+  };
+
+  // Handle favicon delete
+  const handleDeleteFavicon = async () => {
+    if (!confirm('Are you sure you want to delete the favicon?')) return;
+
+    try {
+      const res = await fetch('/api/branding/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'favicon' })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setHasFavicon(false);
+        setBrandingMessage({ type: 'success', text: 'Favicon deleted successfully! Refresh the page to see changes.' });
+        setTimeout(() => setBrandingMessage(null), 5000);
+      } else {
+        setBrandingMessage({ type: 'error', text: data.error || 'Failed to delete favicon' });
+        setTimeout(() => setBrandingMessage(null), 5000);
+      }
+    } catch (err) {
+      setBrandingMessage({ type: 'error', text: 'Failed to delete favicon: ' + err.message });
+      setTimeout(() => setBrandingMessage(null), 5000);
+    }
+  };
+
   if (isPending || !session?.user) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -254,6 +436,115 @@ export default function SettingsPage() {
             </span>
           )}
         </div>
+
+        {/* Branding - Admin Only */}
+        {session.user.role === 'admin' && (
+          <div className="mb-8">
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Branding</h2>
+
+              {/* Status Messages */}
+              {brandingMessage && (
+                <div className={`mb-6 p-4 rounded-lg text-sm ${
+                  brandingMessage.type === 'success'
+                    ? 'bg-green-50 text-green-800 border border-green-200'
+                    : 'bg-red-50 text-red-800 border border-red-200'
+                }`}>
+                  {brandingMessage.text}
+                </div>
+              )}
+
+              {/* Company Logo */}
+              <div className="mb-6 pb-6 border-b">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Company Logo</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Upload a logo to display in the top left of the navigation bar. Recommended: PNG or SVG, max 2MB.
+                </p>
+
+                {hasLogo && (
+                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src="/api/branding/serve?type=logo"
+                          alt="Company Logo"
+                          className="h-12 max-w-[200px] object-contain"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <button
+                        onClick={handleDeleteLogo}
+                        className="text-sm text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Delete Logo
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <label className="apple-button cursor-pointer">
+                    {uploadingLogo ? 'Uploading...' : hasLogo ? 'Replace Logo' : 'Upload Logo'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/gif,image/svg+xml"
+                      onChange={handleLogoUpload}
+                      disabled={uploadingLogo}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Favicon */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Favicon</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Upload a favicon to display in the browser tab. Recommended: ICO or PNG (32x32 or 16x16), max 1MB.
+                </p>
+
+                {hasFavicon && (
+                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src="/api/branding/serve?type=favicon"
+                          alt="Favicon"
+                          className="w-8 h-8"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                        <span className="text-sm text-gray-600">Favicon uploaded</span>
+                      </div>
+                      <button
+                        onClick={handleDeleteFavicon}
+                        className="text-sm text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Delete Favicon
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <label className="apple-button cursor-pointer">
+                    {uploadingFavicon ? 'Uploading...' : hasFavicon ? 'Replace Favicon' : 'Upload Favicon'}
+                    <input
+                      type="file"
+                      accept="image/png,image/x-icon,.ico"
+                      onChange={handleFaviconUpload}
+                      disabled={uploadingFavicon}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* GP% Color Thresholds */}
         <div className="mb-8">
