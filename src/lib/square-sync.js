@@ -58,27 +58,52 @@ async function fetchAllCatalogObjects(token, isProd) {
   return allObjects;
 }
 
+// Get merchant locations
+async function getMerchantLocations(token, isProd) {
+  try {
+    const data = await rawSquareRequest("/v2/locations", token, isProd);
+    const locations = data.locations || [];
+    console.log(`[SYNC] Found ${locations.length} locations:`, locations.map(l => `${l.name} (${l.id})`));
+    return locations.map(loc => loc.id);
+  } catch (err) {
+    console.error("[SYNC] Could not fetch locations:", err.message);
+    return [];
+  }
+}
+
 // Get inventory counts for variations
-async function getInventoryCounts(variationIds, token, isProd) {
+async function getInventoryCounts(variationIds, locationIds, token, isProd) {
   const countsMap = {};
 
   for (let i = 0; i < variationIds.length; i += 100) {
     const batchIds = variationIds.slice(i, i + 100);
 
     try {
+      const requestBody = {
+        catalog_object_ids: batchIds
+      };
+
+      // Include location_ids if available
+      if (locationIds && locationIds.length > 0) {
+        requestBody.location_ids = locationIds;
+      }
+
       const data = await rawSquareRequest(
         "/v2/inventory/batch-retrieve-counts",
         token,
         isProd,
         "POST",
-        { catalog_object_ids: batchIds }
+        requestBody
       );
 
       if (data.counts) {
         for (const count of data.counts) {
           const objId = count.catalog_object_id;
           if (objId) {
-            countsMap[objId] = Number(count.quantity) || 0;
+            // Sum quantities across all locations for the same item
+            const currentQty = countsMap[objId] || 0;
+            const newQty = Number(count.quantity) || 0;
+            countsMap[objId] = currentQty + newQty;
           }
         }
       }
@@ -193,8 +218,11 @@ export async function syncInventoryFromSquare() {
 
     console.log(`[SYNC] Found ${variationIds.length} variations`);
 
+    // Fetch merchant locations
+    const locationIds = await getMerchantLocations(envToken, isProduction);
+
     // Fetch inventory counts
-    const inventoryCounts = await getInventoryCounts(variationIds, envToken, isProduction);
+    const inventoryCounts = await getInventoryCounts(variationIds, locationIds, envToken, isProduction);
 
     // Fetch last sold dates
     const lastSoldMap = await getLastSoldDates(variationIds, envToken, isProduction);
