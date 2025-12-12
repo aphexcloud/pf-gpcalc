@@ -58,7 +58,7 @@ function getSquareCredentials() {
     accessToken = rawToken.trim().replace(/^["']|["']$/g, '');
   }
 
-  if (!environment || environment === 'sandbox') {
+  if (!environment) {
     const rawEnv = process.env.SQUARE_ENVIRONMENT || "sandbox";
     environment = rawEnv.toLowerCase().includes("production") ? "production" : "sandbox";
   }
