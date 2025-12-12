@@ -80,7 +80,8 @@ async function getInventoryCounts(variationIds, locationIds, token, isProd) {
 
     try {
       const requestBody = {
-        catalog_object_ids: batchIds
+        catalog_object_ids: batchIds,
+        states: ["IN_STOCK"]  // Only count items that are IN_STOCK
       };
 
       // Include location_ids if available
