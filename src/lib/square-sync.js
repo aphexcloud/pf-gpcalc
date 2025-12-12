@@ -1,6 +1,12 @@
 // Square Sync Service - Fetches data from Square API and updates cache
 
 import { updateInventoryCache } from './inventory-cache.js';
+import fs from 'fs';
+import path from 'path';
+import { decrypt, isEncrypted } from './encryption.js';
+
+const DATA_DIR = process.env.DATA_DIR || '/app/data';
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 const bigIntReplacer = (key, value) => {
   if (typeof value === "bigint") {
@@ -8,6 +14,64 @@ const bigIntReplacer = (key, value) => {
   }
   return value;
 };
+
+/**
+ * Get Square credentials from settings file or environment variables
+ * Settings take precedence over environment variables
+ */
+function getSquareCredentials() {
+  let accessToken = '';
+  let environment = 'sandbox';
+
+  // Try to read from settings file first
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
+      const settings = JSON.parse(data);
+
+      if (settings.square) {
+        if (settings.square.accessToken) {
+          accessToken = settings.square.accessToken;
+          // Decrypt if encrypted
+          if (isEncrypted(accessToken)) {
+            try {
+              accessToken = decrypt(accessToken);
+            } catch (err) {
+              console.error('[SQUARE-SYNC] Failed to decrypt access token from settings:', err.message);
+              accessToken = '';
+            }
+          }
+        }
+
+        if (settings.square.environment) {
+          environment = settings.square.environment;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[SQUARE-SYNC] Error reading settings file:', err.message);
+  }
+
+  // Fall back to environment variables if settings are empty
+  if (!accessToken) {
+    const rawToken = process.env.SQUARE_ACCESS_TOKEN || "";
+    accessToken = rawToken.trim().replace(/^["']|["']$/g, '');
+  }
+
+  if (!environment || environment === 'sandbox') {
+    const rawEnv = process.env.SQUARE_ENVIRONMENT || "sandbox";
+    environment = rawEnv.toLowerCase().includes("production") ? "production" : "sandbox";
+  }
+
+  const isProduction = environment.toLowerCase() === 'production';
+
+  console.log(`[SQUARE-SYNC] Using ${accessToken ? 'configured' : 'no'} access token, environment: ${environment}`);
+
+  return {
+    token: accessToken,
+    isProduction: isProduction
+  };
+}
 
 async function rawSquareRequest(endpoint, token, isProd, method = "GET", body = null) {
   const baseUrl = isProd
@@ -179,14 +243,11 @@ export async function syncInventoryFromSquare() {
   const startTime = Date.now();
 
   try {
-    const rawToken = process.env.SQUARE_ACCESS_TOKEN || "";
-    const envToken = rawToken.trim().replace(/^["']|["']$/g, '');
-
-    const rawEnv = process.env.SQUARE_ENVIRONMENT || "sandbox";
-    const isProduction = rawEnv.toLowerCase().includes("production");
+    // Get credentials from settings file or environment variables
+    const { token: envToken, isProduction } = getSquareCredentials();
 
     if (!envToken) {
-      throw new Error("Missing SQUARE_ACCESS_TOKEN");
+      throw new Error("Missing Square access token. Configure it in Settings or set SQUARE_ACCESS_TOKEN environment variable.");
     }
 
     console.log(`[SYNC] Starting Square inventory sync (Mode: ${isProduction ? 'Production' : 'Sandbox'})...`);

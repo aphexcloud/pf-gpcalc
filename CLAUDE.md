@@ -25,8 +25,12 @@ When deploying for the first time, a default admin account is automatically crea
 ## Square Integration
 - **Account**: Providence Foods (AU)
 - **Merchant ID**: ML6ZC7JNWT26R
-- **Environment**: Production
 - **API**: Read-only - never writes to Square
+- **Configuration**: Can be configured via Settings page (recommended) or environment variables
+  - Settings page: Admin → Settings → Square Integration
+  - Access token is encrypted using AES-256-GCM before storage
+  - Environment dropdown: Production or Sandbox
+  - Settings override environment variables if both are present
 
 ## Features
 - Product listing with search
@@ -47,11 +51,14 @@ When deploying for the first time, a default admin account is automatically crea
 
 ## Deployment (Portainer)
 - Build from: https://github.com/aphexcloud/pf-gpcalc
-- Environment variables:
-  - `SQUARE_ACCESS_TOKEN` - Square API token
-  - `SQUARE_ENVIRONMENT=production`
-- Volume mapping: `gpcalc-data:/app/data`
+- Environment variables (optional if configured via Settings page):
+  - `SQUARE_ACCESS_TOKEN` - Square API token (can be configured in Settings instead)
+  - `SQUARE_ENVIRONMENT=production` - Environment mode (can be configured in Settings instead)
+  - `ENCRYPTION_KEY` - (Optional) Custom encryption key for sensitive data. If not set, uses a default key.
+- Volume mapping: `gpcalc-data:/app/data` (required for persistence)
 - Port: 3000
+
+**Note**: Square credentials configured via the Settings page will override environment variables. It's recommended to configure credentials via Settings for better security (encrypted storage) and easier management.
 
 ## API Endpoints
 - `GET /api/inventory` - Fetch all products from Square
