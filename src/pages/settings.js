@@ -441,15 +441,28 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Liquid Glass Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(0,0,0,0.02),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(0,0,0,0.015),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_80%,rgba(0,0,0,0.01),transparent_50%)]"></div>
+      </div>
+
+      {/* Floating Orbs */}
+      <div className="absolute top-20 left-20 w-64 h-64 bg-gradient-to-br from-gray-200/30 to-gray-300/20 rounded-full blur-3xl animate-float"></div>
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-br from-gray-300/20 to-gray-200/20 rounded-full blur-3xl animate-float-delayed"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-gray-100/30 to-white/20 rounded-full blur-3xl animate-pulse-slow"></div>
+
+      <div className="relative z-10">
+      {/* Glass Header */}
+      <div className="sticky top-0 z-30 backdrop-blur-2xl bg-white/60 border-b border-white/80 shadow-lg shadow-gray-900/5">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.push('/')}
-                className="text-gray-400 hover:text-gray-600"
+                className="p-2 glass-card hover:bg-white/80 rounded-xl transition-all duration-300"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -468,7 +481,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-8 animate-fade-in">
         {/* User Info */}
         <div className="mb-8 pb-8 border-b">
           <p className="text-sm text-gray-500">Signed in as</p>
@@ -483,7 +496,7 @@ export default function SettingsPage() {
         {/* Branding - Admin Only */}
         {session.user.role === 'admin' && (
           <div className="mb-8">
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="glass-card rounded-3xl p-6 animate-scale-in">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Branding</h2>
 
               {/* Status Messages */}
@@ -528,7 +541,7 @@ export default function SettingsPage() {
                 )}
 
                 <div className="flex items-center gap-3">
-                  <label className="apple-button cursor-pointer">
+                  <label className="glass-button px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] cursor-pointer inline-block">
                     {uploadingLogo ? 'Uploading...' : hasLogo ? 'Replace Logo' : 'Upload Logo'}
                     <input
                       type="file"
@@ -573,7 +586,7 @@ export default function SettingsPage() {
                 )}
 
                 <div className="flex items-center gap-3">
-                  <label className="apple-button cursor-pointer">
+                  <label className="glass-button px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] cursor-pointer inline-block">
                     {uploadingFavicon ? 'Uploading...' : hasFavicon ? 'Replace Favicon' : 'Upload Favicon'}
                     <input
                       type="file"
@@ -592,7 +605,7 @@ export default function SettingsPage() {
         {/* Square Configuration - Admin Only */}
         {session.user.role === 'admin' && (
           <div className="mb-8">
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="glass-card rounded-3xl p-6 animate-scale-in delay-100">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Square Integration</h2>
               <p className="text-sm text-gray-600 mb-6">
                 Configure Square API credentials for inventory synchronization. Your access token will be encrypted before storage.
@@ -653,7 +666,7 @@ export default function SettingsPage() {
                   <button
                     onClick={saveSquareSettings}
                     disabled={savingSquareSettings}
-                    className="apple-button"
+                    className="glass-button px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     {savingSquareSettings ? 'Saving...' : 'Save Square Settings'}
                   </button>
@@ -679,7 +692,7 @@ export default function SettingsPage() {
 
         {/* GP% Color Thresholds */}
         <div className="mb-8">
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="glass-card rounded-3xl p-6 animate-scale-in delay-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">GP% Color Thresholds</h2>
 
             <div className="space-y-6">
@@ -748,7 +761,7 @@ export default function SettingsPage() {
                 <button
                   onClick={saveGpThresholds}
                   disabled={savingGpSettings}
-                  className="apple-button"
+                  className="glass-button px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {savingGpSettings ? 'Saving...' : 'Save GP% Thresholds'}
                 </button>
@@ -768,7 +781,7 @@ export default function SettingsPage() {
         {/* Email Settings - Admin Only */}
         {session.user.role === 'admin' && (
           <div className="mb-8">
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="glass-card rounded-3xl p-6 animate-scale-in delay-300">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Email Settings</h2>
 
               {/* Enable Email Toggle */}
@@ -915,7 +928,7 @@ export default function SettingsPage() {
                     <button
                       onClick={handleTestEmail}
                       disabled={testingEmail || !tempSmtpSettings.testRecipient}
-                      className="apple-button apple-button-secondary"
+                      className="glass-button px-6 py-3 bg-white/70 border border-gray-200 hover:bg-white/90 text-gray-700 font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
                       {testingEmail ? 'Sending...' : 'Test Email Configuration'}
                     </button>
@@ -948,7 +961,7 @@ export default function SettingsPage() {
                     <button
                       onClick={saveSmtpSettings}
                       disabled={savingSmtpSettings}
-                      className="apple-button"
+                      className="glass-button px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
                       {savingSmtpSettings ? 'Saving...' : 'Save Email Settings'}
                     </button>
@@ -1034,7 +1047,7 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={changingPassword}
-                  className="apple-button"
+                  className="glass-button px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {changingPassword ? 'Changing Password...' : 'Change Password'}
                 </button>
@@ -1042,6 +1055,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

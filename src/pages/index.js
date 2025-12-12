@@ -414,18 +414,31 @@ export default function ProfitDashboard() {
 
   // Main Content
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Liquid Glass Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(0,0,0,0.02),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(0,0,0,0.015),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_80%,rgba(0,0,0,0.01),transparent_50%)]"></div>
+      </div>
+
+      {/* Floating Orbs for Depth */}
+      <div className="absolute top-20 left-20 w-64 h-64 bg-gradient-to-br from-gray-200/30 to-gray-300/20 rounded-full blur-3xl animate-float"></div>
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-br from-gray-300/20 to-gray-200/20 rounded-full blur-3xl animate-float-delayed"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-gray-100/30 to-white/20 rounded-full blur-3xl animate-pulse-slow"></div>
+
+      <div className="relative z-10">
       {/* Settings Sidebar */}
       {settingsOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop with blur */}
           <div
-            className="fixed inset-0 bg-black/20 z-40"
+            className="fixed inset-0 bg-gray-900/20 backdrop-blur-md z-40 animate-fade-in"
             onClick={() => setSettingsOpen(false)}
           />
 
-          {/* Sidebar */}
-          <div className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 overflow-y-auto">
+          {/* Glass Sidebar */}
+          <div className="fixed left-0 top-0 h-full w-80 glass-card shadow-2xl z-50 overflow-y-auto animate-slide-up">
             <div className="p-6">
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
@@ -458,7 +471,7 @@ export default function ProfitDashboard() {
                     setSettingsOpen(false);
                     router.push('/settings');
                   }}
-                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-3 text-gray-700"
+                  className="w-full text-left px-4 py-3 rounded-xl glass-input hover:bg-white/90 transition-all duration-300 flex items-center gap-3 text-gray-700"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -474,7 +487,7 @@ export default function ProfitDashboard() {
                       setSettingsOpen(false);
                       router.push('/admin/users');
                     }}
-                    className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-3 text-gray-700"
+                    className="w-full text-left px-4 py-3 rounded-xl glass-input hover:bg-white/90 transition-all duration-300 flex items-center gap-3 text-gray-700"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -486,7 +499,7 @@ export default function ProfitDashboard() {
                 {/* Sign Out */}
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-3 text-red-600 mt-4"
+                  className="w-full text-left px-4 py-3 rounded-xl glass-input hover:bg-red-50/80 transition-all duration-300 flex items-center gap-3 text-red-600 mt-4"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -499,8 +512,8 @@ export default function ProfitDashboard() {
         </>
       )}
 
-      {/* Header */}
-      <header className="apple-header sticky top-0 z-30">
+      {/* Glass Header */}
+      <header className="sticky top-0 z-30 backdrop-blur-2xl bg-white/60 border-b border-white/80 shadow-lg shadow-gray-900/5">
         <div className="max-w-[1400px] mx-auto px-6 py-6">
           {/* Menu Button & Centered Title */}
           <div className="relative mb-6">
@@ -509,7 +522,7 @@ export default function ProfitDashboard() {
               {/* Hamburger Menu */}
               <button
                 onClick={() => setSettingsOpen(true)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 glass-card hover:bg-white/80 rounded-xl transition-all duration-300"
                 title="Settings"
               >
                 <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -575,7 +588,7 @@ export default function ProfitDashboard() {
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="apple-search pl-12"
+                className="glass-input w-full px-4 py-3 pl-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-gray-900 placeholder-gray-400"
               />
               {searchQuery && (
                 <button
@@ -591,14 +604,14 @@ export default function ProfitDashboard() {
 
             {/* Stats */}
             <div className="flex gap-3">
-              <div className="stat-pill">
-                <span className="text-gray-500">{filteredInventory.length}</span>
-                <span>Products</span>
+              <div className="glass-card px-4 py-2 rounded-full inline-flex items-center gap-2">
+                <span className="font-semibold text-gray-700">{filteredInventory.length}</span>
+                <span className="text-sm text-gray-500">Products</span>
               </div>
               {canSee('cost') && (
-                <div className="stat-pill">
-                  <span className="text-green-600">{filteredInventory.filter(i => costPrices[i.id] ?? i.costPrice).length}</span>
-                  <span>With Cost</span>
+                <div className="glass-card px-4 py-2 rounded-full inline-flex items-center gap-2">
+                  <span className="font-semibold text-green-600">{filteredInventory.filter(i => costPrices[i.id] ?? i.costPrice).length}</span>
+                  <span className="text-sm text-gray-500">With Cost</span>
                 </div>
               )}
             </div>
@@ -607,9 +620,9 @@ export default function ProfitDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1400px] mx-auto px-6 py-8">
+      <main className="max-w-[1400px] mx-auto px-6 py-8 animate-fade-in">
         {filteredInventory.length === 0 ? (
-          <div className="apple-card p-16 text-center">
+          <div className="glass-card rounded-3xl p-16 text-center animate-scale-in">
             <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
@@ -619,7 +632,7 @@ export default function ProfitDashboard() {
             </p>
           </div>
         ) : (
-          <div className="apple-card overflow-hidden">
+          <div className="glass-card rounded-3xl overflow-hidden animate-scale-in">
             <div className="overflow-x-auto">
               <table className="apple-table">
                 <thead>
@@ -828,6 +841,7 @@ export default function ProfitDashboard() {
           </p>
         </div>
       </main>
+      </div>
     </div>
   );
 }

@@ -223,9 +223,22 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="apple-header sticky top-0 z-30">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Liquid Glass Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(0,0,0,0.02),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(0,0,0,0.015),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_80%,rgba(0,0,0,0.01),transparent_50%)]"></div>
+      </div>
+
+      {/* Floating Orbs */}
+      <div className="absolute top-20 left-20 w-64 h-64 bg-gradient-to-br from-gray-200/30 to-gray-300/20 rounded-full blur-3xl animate-float"></div>
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-br from-gray-300/20 to-gray-200/20 rounded-full blur-3xl animate-float-delayed"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-gray-100/30 to-white/20 rounded-full blur-3xl animate-pulse-slow"></div>
+
+      <div className="relative z-10">
+      {/* Glass Header */}
+      <header className="sticky top-0 z-30 backdrop-blur-2xl bg-white/60 border-b border-white/80 shadow-lg shadow-gray-900/5">
         <div className="max-w-[1200px] mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -235,13 +248,13 @@ export default function UsersPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => router.push('/')}
-                className="apple-button-secondary apple-button"
+                className="glass-button px-6 py-3 bg-white/70 border border-gray-200 hover:bg-white/90 text-gray-700 font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02]"
               >
                 Back to Dashboard
               </button>
               <button
                 onClick={() => setShowInvite(true)}
-                className="apple-button"
+                className="glass-button px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02]"
               >
                 Invite User
               </button>
@@ -250,7 +263,7 @@ export default function UsersPage() {
         </div>
       </header>
 
-      <main className="max-w-[1200px] mx-auto px-6 py-8">
+      <main className="max-w-[1200px] mx-auto px-6 py-8 animate-fade-in">
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
             {error}
@@ -289,7 +302,7 @@ export default function UsersPage() {
         )}
 
         {/* Users Table */}
-        <div className="apple-card overflow-hidden">
+        <div className="glass-card rounded-3xl overflow-hidden animate-scale-in">
           <table className="apple-table">
             <thead>
               <tr>
@@ -379,9 +392,9 @@ export default function UsersPage() {
       {/* Invite Modal */}
       {showInvite && (
         <>
-          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setShowInvite(false)} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-md z-40 animate-fade-in" onClick={() => setShowInvite(false)} />
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="glass-modal rounded-3xl shadow-2xl w-full max-w-md p-6 animate-scale-in">
               <h2 className="text-lg font-semibold mb-4">Invite New User</h2>
 
               <form onSubmit={handleInvite} className="space-y-4">
@@ -391,7 +404,7 @@ export default function UsersPage() {
                     type="text"
                     value={inviteName}
                     onChange={(e) => setInviteName(e.target.value)}
-                    className="apple-search"
+                    className="glass-input w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-gray-900 placeholder-gray-400"
                     required
                   />
                 </div>
@@ -402,7 +415,7 @@ export default function UsersPage() {
                     type="email"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
-                    className="apple-search"
+                    className="glass-input w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-gray-900 placeholder-gray-400"
                     required
                   />
                 </div>
@@ -412,7 +425,7 @@ export default function UsersPage() {
                   <select
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value)}
-                    className="apple-search"
+                    className="glass-input w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-gray-900"
                   >
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
@@ -440,14 +453,14 @@ export default function UsersPage() {
                   <button
                     type="button"
                     onClick={() => setShowInvite(false)}
-                    className="flex-1 apple-button apple-button-secondary"
+                    className="flex-1 glass-button px-4 py-3 bg-white/70 border border-gray-200 hover:bg-white/90 text-gray-700 font-semibold rounded-xl transition-all duration-300"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={inviteLoading}
-                    className="flex-1 apple-button"
+                    className="flex-1 glass-button px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {inviteLoading ? 'Creating...' : 'Create User'}
                   </button>
@@ -461,9 +474,9 @@ export default function UsersPage() {
       {/* Edit Permissions Modal */}
       {editingUser && (
         <>
-          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setEditingUser(null)} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-md z-40 animate-fade-in" onClick={() => setEditingUser(null)} />
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="glass-modal rounded-3xl shadow-2xl w-full max-w-md p-6 animate-scale-in">
               <h2 className="text-lg font-semibold mb-2">Edit Permissions</h2>
               <p className="text-sm text-gray-500 mb-4">{editingUser.name} ({editingUser.email})</p>
 
@@ -489,13 +502,13 @@ export default function UsersPage() {
                   <button
                     type="button"
                     onClick={() => setEditingUser(null)}
-                    className="flex-1 apple-button apple-button-secondary"
+                    className="flex-1 glass-button px-4 py-3 bg-white/70 border border-gray-200 hover:bg-white/90 text-gray-700 font-semibold rounded-xl transition-all duration-300"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleUpdatePermissions}
-                    className="flex-1 apple-button"
+                    className="flex-1 glass-button px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40"
                   >
                     Save Changes
                   </button>
@@ -505,6 +518,7 @@ export default function UsersPage() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }
