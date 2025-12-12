@@ -82,6 +82,14 @@ try {
       createdAt INTEGER,
       updatedAt INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS last_sold (
+      variation_id TEXT PRIMARY KEY,
+      last_sold_at TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_last_sold_date ON last_sold(last_sold_at);
   `);
 } catch (e) {
   // Tables might already exist or be locked - that's ok

@@ -1,6 +1,7 @@
 // Square Sync Service - Fetches data from Square API and updates cache
 
 import { updateInventoryCache } from './inventory-cache.js';
+import { getAllLastSoldDates, bulkUpsertLastSoldDates } from './last-sold-db.js';
 import fs from 'fs';
 import path from 'path';
 import { decrypt, isEncrypted } from './encryption.js';
@@ -180,41 +181,107 @@ async function getInventoryCounts(variationIds, locationIds, token, isProd) {
   return countsMap;
 }
 
-// Get last sold dates from inventory changes
-async function getLastSoldDates(variationIds, token, isProd) {
+// Get last sold dates from Orders API
+async function getLastSoldDates(variationIds, locationIds, token, isProd) {
   const lastSoldMap = {};
 
-  for (let i = 0; i < variationIds.length; i += 100) {
-    const batchIds = variationIds.slice(i, i + 100);
+  // Load cached last sold dates from database
+  let cachedDates = {};
+  try {
+    cachedDates = getAllLastSoldDates();
+    console.log(`[SYNC] Loaded ${Object.keys(cachedDates).length} cached last sold dates from database`);
+  } catch (err) {
+    console.log('[SYNC] Could not load last sold cache from database:', err.message);
+  }
 
-    try {
+  console.log('[SYNC] Searching orders for last sold dates...');
+
+  // Search orders from the last 90 days (Square's maximum for order search)
+  const now = new Date();
+  const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
+
+  try {
+    let cursor = null;
+    let orderCount = 0;
+
+    do {
+      const searchBody = {
+        location_ids: locationIds.length > 0 ? locationIds : undefined,
+        query: {
+          filter: {
+            date_time_filter: {
+              closed_at: {
+                start_at: ninetyDaysAgo.toISOString(),
+                end_at: now.toISOString()
+              }
+            },
+            state_filter: {
+              states: ["COMPLETED"]
+            }
+          },
+          sort: {
+            sort_field: "CLOSED_AT",
+            sort_order: "DESC"
+          }
+        },
+        limit: 100,
+        cursor: cursor
+      };
+
       const data = await rawSquareRequest(
-        "/v2/inventory/changes/batch-retrieve",
+        "/v2/orders/search",
         token,
         isProd,
         "POST",
-        {
-          catalog_object_ids: batchIds,
-          types: ["ADJUSTMENT"],
-          states: ["SOLD"]
-        }
+        searchBody
       );
 
-      if (data.changes) {
-        for (const change of data.changes) {
-          const objId = change.adjustment?.catalog_object_id;
-          const occurredAt = change.adjustment?.occurred_at;
+      if (data.orders) {
+        orderCount += data.orders.length;
 
-          if (objId && occurredAt) {
-            if (!lastSoldMap[objId] || new Date(occurredAt) > new Date(lastSoldMap[objId])) {
-              lastSoldMap[objId] = occurredAt;
+        for (const order of data.orders) {
+          const closedAt = order.closed_at;
+
+          if (order.line_items && closedAt) {
+            for (const lineItem of order.line_items) {
+              const catalogObjectId = lineItem.catalog_object_id;
+
+              if (catalogObjectId && variationIds.includes(catalogObjectId)) {
+                // Update if this is the first time we've seen this item or if this order is more recent
+                if (!lastSoldMap[catalogObjectId] || new Date(closedAt) > new Date(lastSoldMap[catalogObjectId])) {
+                  lastSoldMap[catalogObjectId] = closedAt;
+                }
+              }
             }
           }
         }
       }
-    } catch (err) {
-      console.log("Could not fetch inventory changes:", err.message);
+
+      cursor = data.cursor;
+    } while (cursor);
+
+    console.log(`[SYNC] Scanned ${orderCount} orders from last 90 days`);
+
+  } catch (err) {
+    console.log('[SYNC] Could not fetch orders:', err.message);
+  }
+
+  // Merge with cached dates (keep older dates that aren't in the 90-day window)
+  for (const [varId, cachedDate] of Object.entries(cachedDates)) {
+    if (!lastSoldMap[varId]) {
+      // Only use cached date if it's older than 90 days (outside our search window)
+      const cachedTime = new Date(cachedDate).getTime();
+      if (cachedTime < ninetyDaysAgo.getTime()) {
+        lastSoldMap[varId] = cachedDate;
+      }
     }
+  }
+
+  // Save updated cache to database
+  try {
+    bulkUpsertLastSoldDates(lastSoldMap);
+  } catch (err) {
+    console.log('[SYNC] Could not save last sold cache to database:', err.message);
   }
 
   return lastSoldMap;
@@ -286,8 +353,8 @@ export async function syncInventoryFromSquare() {
     // Fetch inventory counts
     const inventoryCounts = await getInventoryCounts(variationIds, locationIds, envToken, isProduction);
 
-    // Fetch last sold dates
-    const lastSoldMap = await getLastSoldDates(variationIds, envToken, isProduction);
+    // Fetch last sold dates from Orders API
+    const lastSoldMap = await getLastSoldDates(variationIds, locationIds, envToken, isProduction);
 
     // Merge all data
     const mergedData = items
