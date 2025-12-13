@@ -18,6 +18,25 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState('');
+  const [hasLogo, setHasLogo] = useState(false);
+
+  // Check for company logo
+  useEffect(() => {
+    async function checkBranding() {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.branding?.hasLogo) {
+            setHasLogo(true);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check branding:', error);
+      }
+    }
+    checkBranding();
+  }, []);
 
   // Redirect to home when session is established after successful login
   useEffect(() => {
@@ -101,13 +120,21 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-block mb-4">
-              <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 animate-glow">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
+              {hasLogo ? (
+                <img
+                  src="/api/branding/serve?type=logo"
+                  alt="Company Logo"
+                  className="h-16 max-w-[200px] object-contain mx-auto"
+                />
+              ) : (
+                <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 animate-glow">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'var(--font-serif)', fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
               Profit Dashboard
             </h1>
             <p className="text-sm text-gray-600 font-medium">Sign in to continue</p>
